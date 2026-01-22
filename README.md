@@ -52,12 +52,19 @@ Overrides
 
 ## Development
 
-`bun run build` writes the bundled plugin to `dist/` and installs it to
-`~/.config/opencode/clankers.js` for local OpenCode usage.
+This repo is a pnpm monorepo with:
+
+- `apps/opencode-plugin` (published as `@dxta-dev/clankers-opencode`)
+- `apps/cursor-plugin` (published as `@dxta-dev/clankers-cursor`)
+- `apps/claude-code-plugin` (published as `@dxta-dev/clankers-claude-code`)
+- `packages/core`
+
+`pnpm build:opencode` writes the bundled plugin to `apps/opencode-plugin/dist/`
+for local OpenCode usage.
 
 ```sh
-bun install
-bun run build
-bun run lint
-bun run format
+pnpm install
+pnpm build:opencode
+pnpm lint
+pnpm format
 ```

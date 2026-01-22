@@ -1,0 +1,19 @@
+{
+	"name": "@dxta-dev/clankers-opencode",
+	"version": "0.1.0",
+	"type": "module",
+	"exports": {
+		".": {
+			"types": "./src/index.ts",
+			"default": "./src/index.ts"
+		}
+	},
+	"files": ["src", "dist"],
+	"scripts": {
+		"build": "bun build ./src/index.ts --outdir dist --target bun --format esm"
+	},
+	"dependencies": {
+		"@dxta-dev/clankers-core": "workspace:*",
+		"@opencode-ai/plugin": "1.1.30"
+	}
+}

@@ -14,9 +14,11 @@
 - ingestion/
   - [ingestion/aggregation](ingestion/aggregation.md)
 - installation/
-  - [installation/postinstall](installation/postinstall.md)
+- [installation/postinstall](installation/postinstall.md)
 - release/
   - [release/npm-release](release/npm-release.md)
+- ci/
+  - [ci/overview](ci/overview.md)
 
 Example
 ```ts

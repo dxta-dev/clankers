@@ -1,17 +1,16 @@
 import type { Plugin } from "@opencode-ai/plugin";
 import {
-	inferRole,
-	scheduleMessageFinalize,
-	stageMessageMetadata,
-	stageMessagePart,
-} from "./aggregation.js";
-import { dbExists, openDb } from "./db.js";
-import {
 	MessageMetadataSchema,
 	MessagePartSchema,
 	SessionEventSchema,
-} from "./schemas.js";
-import { createStore } from "./store.js";
+	createStore,
+	dbExists,
+	inferRole,
+	openDb,
+	scheduleMessageFinalize,
+	stageMessageMetadata,
+	stageMessagePart,
+} from "@dxta-dev/clankers-core";
 
 const syncedSessions = new Set<string>();
 

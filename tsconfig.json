@@ -15,5 +15,5 @@
 		"types": ["node"],
 		"resolveJsonModule": true
 	},
-	"include": ["src/**/*.ts", "index.ts", "claude-code.ts", "cursor.ts"]
+	"include": ["apps/**/src/**/*.ts", "packages/**/src/**/*.ts"]
 }

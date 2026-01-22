@@ -6,11 +6,11 @@ Bun. It stores OpenCode session/message events in local SQLite using
 Use this file as the operational guide for agentic coding work.
 
 ## Build, Lint, Test
-- Install deps: `bun install`
-- Typecheck: `bun run check` (tsc --noEmit)
-- Lint: `bun run lint` (Biome)
-- Format: `bun run format` (Biome, write mode)
-- Build: `bun run build` (bundles into `dist/` for local plugins).
+- Install deps: `pnpm install`
+- Typecheck: `pnpm check` (tsc --noEmit)
+- Lint: `pnpm lint` (Biome)
+- Format: `pnpm format` (Biome, write mode)
+- Build: `pnpm build` (runs bun build for app packages).
 - Release workflow publishes TypeScript sources without a build step.
 
 ### Running a Single Test
@@ -26,18 +26,19 @@ Use this file as the operational guide for agentic coding work.
 - No Cursor or Copilot instruction files were found in this repo.
 
 ## Project Structure
-- `src/index.ts` registers the plugin and handles OpenCode events.
-- `src/db.ts` owns database connection, PRAGMAs, and schema creation.
-- `src/store.ts` owns SQLite prepared statements and upserts.
-- `src/schemas.ts` defines Zod schemas for validation boundaries.
-- `src/aggregation.ts` handles message assembly.
+- `apps/opencode-plugin/src/index.ts` registers the plugin and handles OpenCode events.
+- `packages/core/src/db.ts` owns database connection, PRAGMAs, and schema creation.
+- `packages/core/src/store.ts` owns SQLite prepared statements and upserts.
+- `packages/core/src/schemas.ts` defines Zod schemas for validation boundaries.
+- `packages/core/src/aggregation.ts` handles message assembly.
+- `packages/core/scripts/postinstall.js` initializes the SQLite database.
 
 ## Tooling & Environment
 - TypeScript is strict and ESM-only.
 - Module resolution is `bundler`; use explicit file extensions.
 - Runtime supports Node and Bun; use `better-sqlite3` APIs.
 - Biome handles formatting and linting; do not hand-format.
-- `bun.lock` is present; use Bun for dependency operations.
+- pnpm manages workspace dependencies; use `pnpm-lock.yaml`.
 
 ## Code Style (Biome + TypeScript)
 - Formatting is handled by Biome; keep code as Biome would format it.
@@ -78,11 +79,11 @@ Use this file as the operational guide for agentic coding work.
 - Always enable FK enforcement: `PRAGMA foreign_keys = ON;`.
 - Use idempotent upserts for sessions and messages.
 - Use prepared statements for repeated writes.
-- Default DB path: OS app data root under `clankers/` (see `src/paths.ts`).
+- Default DB path: OS app data root under `clankers/` (see `packages/core/src/paths.ts`).
 - Allow override via `CLANKERS_DB_PATH`.
 
 ## Plugin Behavior Conventions
-- The plugin entry point is `ClankersPlugin` in `src/index.ts`.
+- The plugin entry point is `ClankersPlugin` in `apps/opencode-plugin/src/index.ts`.
 - Always validate `event.properties` with Zod before using them.
 - Handle both `message.updated` and `message.part.updated` events.
 - Use aggregation utilities to merge message parts before storing.
@@ -107,8 +108,7 @@ Use this file as the operational guide for agentic coding work.
 
 ```ts
 import type { Plugin } from "@opencode-ai/plugin";
-import { openDb } from "./db.js";
-import { createStore } from "./store.js";
+import { createStore, openDb } from "@dxta-dev/clankers-core";
 
 export const ClankersPlugin: Plugin = async () => {
 	const db = openDb();
@@ -125,7 +125,7 @@ if (!parsed.success) return;
 ## When Making Changes
 - Keep TypeScript strictness in mind; avoid `any`.
 - Update schemas and payload transforms together.
-- If you add dependencies, update `package.json` and `bun.lock`.
+- If you add dependencies, update relevant `package.json` and `pnpm-lock.yaml`.
 - If you add scripts (build/test), update this guide.
 - Preserve existing API surfaces; this plugin is event-driven.
 

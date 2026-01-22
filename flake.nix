@@ -1,5 +1,5 @@
 {
-  description = "Dev shell with bun and sqlite";
+  description = "Dev shell with node, pnpm, and sqlite";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
@@ -14,8 +14,11 @@
     {
       devShells.${system}.default = pkgs.mkShell {
         packages = [
-          pkgs.bun
+          pkgs.nodejs_24
+          pkgs.pnpm
           pkgs.sqlite
+          pkgs.nodePackages.typescript
+          pkgs.nodePackages.typescript-language-server
         ];
       };
     };
