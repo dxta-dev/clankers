@@ -2,9 +2,17 @@
 
 OpenCode plugin that stores session and message sync data locally in SQLite.
 
+## What it does
+
+- Captures session and message events from OpenCode.
+- Aggregates message parts into full text content.
+- Writes sessions/messages to a local SQLite database.
+- Runs a one-time backfill of the last 30 days of local history.
+
 ## Install
 
-Add the plugin to your `opencode.json`:
+Add the plugin to your OpenCode config (`~/.config/opencode/opencode.json` or
+project-level `opencode.json`):
 
 ```json
 {
@@ -13,7 +21,7 @@ Add the plugin to your `opencode.json`:
 }
 ```
 
-Alternatively, drop a built JS/TS file into `.opencode/plugins/`.
+Restart OpenCode to load the plugin and initialize the database.
 
 ## Quick start
 
@@ -37,7 +45,6 @@ delete the `meta.backfill_completed_at` row or remove the database file.
 
 ```sh
 bun install
-bun run build
 bun run lint
 bun run format
 ```
