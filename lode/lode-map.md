@@ -10,10 +10,11 @@
   - [opencode/event-handling](opencode/event-handling.md)
 - storage/
   - [storage/sqlite](storage/sqlite.md)
+  - [storage/paths](storage/paths.md)
 - ingestion/
   - [ingestion/aggregation](ingestion/aggregation.md)
-- backfill/
-  - [backfill/one-time](backfill/one-time.md)
+- installation/
+  - [installation/postinstall](installation/postinstall.md)
 - release/
   - [release/npm-release](release/npm-release.md)
 
@@ -37,6 +38,4 @@ flowchart TB
   Storage --> SQLite[sqlite.md]
   Lode --> Ingestion[ingestion/]
   Ingestion --> Aggregation[aggregation.md]
-  Lode --> Backfill[backfill/]
-  Backfill --> OneTime[one-time.md]
 ```

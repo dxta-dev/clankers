@@ -4,14 +4,16 @@
 		"lib": ["ES2022"],
 		"module": "ESNext",
 		"moduleResolution": "bundler",
-		"rootDir": "src",
+		"rootDir": ".",
 		"outDir": "dist",
 		"strict": true,
 		"noEmit": true,
 		"verbatimModuleSyntax": true,
+		"allowSyntheticDefaultImports": true,
+		"esModuleInterop": true,
 		"allowImportingTsExtensions": true,
-		"types": ["bun-types"],
+		"types": ["node"],
 		"resolveJsonModule": true
 	},
-	"include": ["src/**/*.ts", "index.ts"]
+	"include": ["src/**/*.ts", "index.ts", "claude-code.ts", "cursor.ts"]
 }

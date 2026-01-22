@@ -6,6 +6,8 @@ Invariants
 - `session.created` is de-duplicated via an in-memory `syncedSessions` set.
 - `session.updated` and `session.idle` always upsert the latest session data.
 - `message.updated` and `message.part.updated` both feed the aggregation stage.
+- The SQLite store is opened during plugin initialization after postinstall migrations.
+- Events are skipped if the database is missing or cannot be opened.
 
 Links: [plugins](plugins.md), [aggregation](../ingestion/aggregation.md), [sqlite](../storage/sqlite.md)
 

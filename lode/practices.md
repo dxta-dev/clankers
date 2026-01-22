@@ -2,7 +2,8 @@ Practices
 - Validate event payloads with Zod at ingress and storage boundaries.
 - Use SQLite upserts for idempotent session and message writes.
 - Enable WAL and foreign keys on database open.
-- Run a one-time backfill and record completion in the meta table.
+- Build scripts produce `dist/index.js` (OpenCode), `dist/claude-code.js`, and `dist/cursor.js`; npm installs run a postinstall script to create/migrate the SQLite database before OpenCode loads the plugin.
+- Store database and config under the harness-neutral app data root (`storage/paths.md`).
 - Use Biome for formatting and linting.
 
 Links: [summary](summary.md)
@@ -17,9 +18,6 @@ store.upsertSession({ id: parsed.data.id, title: parsed.data.title ?? "Untitled"
 Diagram
 ```mermaid
 flowchart LR
-  Start[Plugin init] --> CheckMeta{meta.backfill_completed_at?}
-  CheckMeta -- no --> Import[Read storage files]
-  Import --> Upsert[Store upserts]
-  Upsert --> Mark[Write meta timestamp]
-  CheckMeta -- yes --> Done[Skip backfill]
+  Event[OpenCode event] --> Validate[Zod validation]
+  Validate --> Upsert[Store upserts]
 ```

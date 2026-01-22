@@ -1,7 +1,10 @@
-import type { Database } from "bun:sqlite";
 import { MessagePayloadSchema, SessionPayloadSchema } from "./schemas.js";
 
-export function createStore(db: Database) {
+type SqliteDb = {
+	prepare: (sql: string) => { run: (params: Record<string, unknown>) => void };
+};
+
+export function createStore(db: SqliteDb) {
 	const upsertSession = db.prepare(`
     INSERT INTO sessions (
       id, title, project_path, project_name, model, provider,

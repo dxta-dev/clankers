@@ -1,7 +1,8 @@
 # Agent Guide for @dxta-dev/clankers
 
-This repo is an OpenCode plugin written in TypeScript (ESM) and run on Bun.
-It stores OpenCode session/message events in local SQLite using `bun:sqlite`.
+This repo is an OpenCode plugin written in TypeScript (ESM) and run on Node or
+Bun. It stores OpenCode session/message events in local SQLite using
+`better-sqlite3`.
 Use this file as the operational guide for agentic coding work.
 
 ## Build, Lint, Test
@@ -9,7 +10,7 @@ Use this file as the operational guide for agentic coding work.
 - Typecheck: `bun run check` (tsc --noEmit)
 - Lint: `bun run lint` (Biome)
 - Format: `bun run format` (Biome, write mode)
-- Build: no build script is defined in `package.json`.
+- Build: `bun run build` (bundles into `dist/` for local plugins).
 - Release workflow publishes TypeScript sources without a build step.
 
 ### Running a Single Test
@@ -29,12 +30,12 @@ Use this file as the operational guide for agentic coding work.
 - `src/db.ts` owns database connection, PRAGMAs, and schema creation.
 - `src/store.ts` owns SQLite prepared statements and upserts.
 - `src/schemas.ts` defines Zod schemas for validation boundaries.
-- `src/aggregation.ts` and `src/backfill.ts` handle message assembly and backfill.
+- `src/aggregation.ts` handles message assembly.
 
 ## Tooling & Environment
 - TypeScript is strict and ESM-only.
 - Module resolution is `bundler`; use explicit file extensions.
-- Bun is the runtime; use `bun:sqlite` APIs.
+- Runtime supports Node and Bun; use `better-sqlite3` APIs.
 - Biome handles formatting and linting; do not hand-format.
 - `bun.lock` is present; use Bun for dependency operations.
 
@@ -60,7 +61,7 @@ Use this file as the operational guide for agentic coding work.
 - Use explicit types for public function signatures.
 
 ### Naming Conventions
-- Functions: lowerCamelCase (`openDb`, `runBackfillIfNeeded`).
+- Functions: lowerCamelCase (`openDb`, `scheduleMessageFinalize`).
 - Constants: UPPER_SNAKE_CASE (`DEFAULT_DB_PATH`).
 - Zod schemas: PascalCase with `Schema` suffix.
 - SQL fields: snake_case in database, camelCase in TS.
@@ -77,9 +78,8 @@ Use this file as the operational guide for agentic coding work.
 - Always enable FK enforcement: `PRAGMA foreign_keys = ON;`.
 - Use idempotent upserts for sessions and messages.
 - Use prepared statements for repeated writes.
-- Default DB path: `~/.local/share/opencode/clankers.db`.
+- Default DB path: OS app data root under `clankers/` (see `src/paths.ts`).
 - Allow override via `CLANKERS_DB_PATH`.
-- Record backfill completion in `meta` (`meta.backfill_completed_at`).
 
 ## Plugin Behavior Conventions
 - The plugin entry point is `ClankersPlugin` in `src/index.ts`.
@@ -95,13 +95,6 @@ Use this file as the operational guide for agentic coding work.
 - Debounce finalization per message ID (current window: 800ms).
 - Infer role when metadata role is unknown or missing.
 - Prevent duplicate writes for the same message ID.
-
-## Backfill Guidelines
-- Backfill runs once when `meta.backfill_completed_at` is missing.
-- Source data is read from `~/.local/share/opencode/storage/`.
-- Only import sessions/messages from the last 30 days.
-- Emit start/finish toasts via `client.tui.showToast`.
-- Store the completion timestamp in `meta` after success.
 
 ## Formatting, Layout, and Data Handling
 - Keep SQL in template literals for readability.

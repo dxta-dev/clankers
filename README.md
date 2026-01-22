@@ -1,13 +1,13 @@
 # @dxta-dev/clankers
 
 OpenCode plugin that stores session and message sync data locally in SQLite.
+Designed to work across multiple AI harnesses (OpenCode, Cursor, Claude Code).
 
 ## What it does
 
 - Captures session and message events from OpenCode.
 - Aggregates message parts into full text content.
 - Writes sessions/messages to a local SQLite database.
-- Runs a one-time backfill of the last 30 days of local history.
 
 ## Install
 
@@ -21,30 +21,43 @@ project-level `opencode.json`):
 }
 ```
 
-Restart OpenCode to load the plugin and initialize the database.
+Install the package (npm or Bun). The postinstall step creates and migrates the
+local database before OpenCode loads the plugin.
 
 ## Quick start
 
 1. Add the plugin to your OpenCode config (or drop a built plugin into
    `.opencode/plugins/`).
-2. Restart OpenCode so the plugin loads and initializes the database.
-3. The first run backfills the last 30 days of local OpenCode history.
+2. Install the package so postinstall creates the database.
+3. Restart OpenCode so the plugin loads with local SQLite sync enabled.
 
 ## Configuration
 
-- Default DB path: `~/.local/share/opencode/clankers.db`
-- Override with: `CLANKERS_DB_PATH=/path/to/db`
+Clankers stores its database and config under a harness-neutral app data
+directory:
 
-## Backfill
+- Linux: `${XDG_DATA_HOME:-~/.local/share}/clankers/`
+- macOS: `~/Library/Application Support/clankers/`
+- Windows: `%APPDATA%\clankers\`
 
-On first load, the plugin imports sessions/messages from
-`~/.local/share/opencode/storage/` limited to the last 30 days. To re-run,
-delete the `meta.backfill_completed_at` row or remove the database file.
+Defaults
+- Database: `<data root>/clankers.db`
+- Config: `<data root>/config.json`
+
+Postinstall creates an empty `config.json` if it is missing.
+
+Overrides
+- Set `CLANKERS_DATA_PATH` to change the app data root.
+- Set `CLANKERS_DB_PATH` to point at a specific database file.
 
 ## Development
 
+`bun run build` writes the bundled plugin to `dist/` and installs it to
+`~/.config/opencode/clankers.js` for local OpenCode usage.
+
 ```sh
 bun install
+bun run build
 bun run lint
 bun run format
 ```
