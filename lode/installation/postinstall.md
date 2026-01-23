@@ -25,7 +25,7 @@ db.close();
 Diagram
 ```mermaid
 flowchart LR
-  Install[npm/bun install] --> Postinstall[postinstall.js]
+  Install[pnpm install] --> Postinstall[postinstall.js]
   Postinstall --> Migrate[Apply migrations]
   Migrate --> Ready[clankers.db ready]
 ```

@@ -10,7 +10,7 @@ Use this file as the operational guide for agentic coding work.
 - Typecheck: `pnpm check` (tsc --noEmit)
 - Lint: `pnpm lint` (Biome)
 - Format: `pnpm format` (Biome, write mode)
-- Build: `pnpm build` (runs bun build for app packages).
+- Build: `pnpm build` (runs esbuild via Node 24 for app packages).
 - Release workflow publishes TypeScript sources without a build step.
 
 ### Running a Single Test
@@ -36,7 +36,7 @@ Use this file as the operational guide for agentic coding work.
 ## Tooling & Environment
 - TypeScript is strict and ESM-only.
 - Module resolution is `bundler`; use explicit file extensions.
-- Runtime supports Node and Bun; use `better-sqlite3` APIs.
+- Runtime supports Node; use `better-sqlite3` APIs.
 - Biome handles formatting and linting; do not hand-format.
 - pnpm manages workspace dependencies; use `pnpm-lock.yaml`.
 
@@ -131,5 +131,4 @@ if (!parsed.success) return;
 
 ## Gaps / TODO for Future Agents
 - No tests are currently configured; add tests with a runner if needed.
-- README mentions `bun run build` but no build script exists.
 - If you add a build step, confirm release workflow expectations.

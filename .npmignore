@@ -4,6 +4,5 @@ dist/
 lode/
 biome.json
 tsconfig.json
-bun.lock
 flake.nix
 flake.lock

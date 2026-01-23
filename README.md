@@ -59,8 +59,8 @@ This repo is a pnpm monorepo with:
 - `apps/claude-code-plugin` (published as `@dxta-dev/clankers-claude-code`)
 - `packages/core`
 
-`pnpm build:opencode` writes the bundled plugin to `apps/opencode-plugin/dist/`
-for local OpenCode usage.
+`pnpm build:opencode` bundles with esbuild (Node 24) and writes the plugin to
+`apps/opencode-plugin/dist/` for local OpenCode usage.
 
 ```sh
 pnpm install

@@ -10,7 +10,7 @@
 	},
 	"files": ["src", "scripts"],
 	"scripts": {
-		"postinstall": "node ./scripts/postinstall.js || bun ./scripts/postinstall.js"
+		"postinstall": "node ./scripts/postinstall.js"
 	},
 	"dependencies": {
 		"better-sqlite3": "11.7.0",
