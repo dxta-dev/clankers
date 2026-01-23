@@ -39,41 +39,48 @@ jobs:
           - app: claude-code
             package: "@dxta-dev/clankers-claude-code"
             path: apps/claude-code-plugin
-    if: ${{ inputs.app == 'all' || inputs.app == matrix.app }}
     steps:
       - name: Checkout
+        if: ${{ inputs.app == 'all' || inputs.app == matrix.app }}
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
       - name: Set up Node
+        if: ${{ inputs.app == 'all' || inputs.app == matrix.app }}
         uses: actions/setup-node@v4
         with:
           node-version: 20
           registry-url: https://registry.npmjs.org
 
       - name: Set up pnpm
+        if: ${{ inputs.app == 'all' || inputs.app == matrix.app }}
         uses: pnpm/action-setup@v4
         with:
           version: 9
 
       - name: Install dependencies
+        if: ${{ inputs.app == 'all' || inputs.app == matrix.app }}
         run: pnpm install
 
       - name: Configure git
+        if: ${{ inputs.app == 'all' || inputs.app == matrix.app }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
       - name: Bump version
+        if: ${{ inputs.app == 'all' || inputs.app == matrix.app }}
         run: >-
           pnpm --filter "${{ matrix.package }}" version
           ${{ inputs.release_type }} --no-git-tag-version
 
       - name: Generate changelog
+        if: ${{ inputs.app == 'all' || inputs.app == matrix.app }}
         run: npx auto-changelog --output CHANGELOG.md --package --tag-prefix "v" --commit-limit false
 
       - name: Commit release
+        if: ${{ inputs.app == 'all' || inputs.app == matrix.app }}
         run: |
           version=$(node -p "require('./${{ matrix.path }}/package.json').version")
           git add "${{ matrix.path }}/package.json" CHANGELOG.md
@@ -81,11 +88,13 @@ jobs:
           git tag "v${version}"
 
       - name: Push release
+        if: ${{ inputs.app == 'all' || inputs.app == matrix.app }}
         run: git push --follow-tags
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Publish to npm
+        if: ${{ inputs.app == 'all' || inputs.app == matrix.app }}
         run: pnpm --filter "${{ matrix.package }}" publish --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
