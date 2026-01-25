@@ -1,13 +1,13 @@
-Clankers is a pnpm monorepo with app packages for OpenCode, Cursor, and Claude Code plus a shared `packages/core` library, built with TypeScript (ESM) for Node 24; it persists session and message events into local SQLite via better-sqlite3 with Zod validation at ingress and storage boundaries, ships distinct entry points under `apps/opencode-plugin/src/index.ts`, `apps/claude-code-plugin/src/index.ts`, and `apps/cursor-plugin/src/index.ts`, and relies on the core postinstall script to create and migrate the database in a harness-neutral app data location (shared across OpenCode, Cursor, Claude Code) before the plugin opens it on startup; a config file lives alongside the database and events are skipped with a warning if the database is missing.
+Clankers is a pnpm monorepo with app packages for OpenCode, Cursor, and Claude Code plus a shared `packages/core` library, built with TypeScript (ESM) for Node 24; it persists session and message events into a local SQLite file via `@libsql/client` with Zod validation at ingress and storage boundaries, ships distinct entry points under `apps/opencode-plugin/src/index.ts`, `apps/claude-code-plugin/src/index.ts`, and `apps/cursor-plugin/src/index.ts`, and relies on the core postinstall script to create and migrate the database in a harness-neutral app data location (shared across OpenCode, Cursor, Claude Code) before the plugin opens it on startup; a config file lives alongside the database and events are skipped with a warning if the database is missing.
 
 Links: [terminology](terminology.md), [practices](practices.md), [schemas](data-model/schemas.md), [plugins](opencode/plugins.md), [event-handling](opencode/event-handling.md), [sqlite](storage/sqlite.md), [paths](storage/paths.md), [postinstall](installation/postinstall.md), [aggregation](ingestion/aggregation.md)
 
 Example
 ```ts
-import Database from "better-sqlite3";
+import { createClient } from "@libsql/client";
 
-const db = new Database("/home/user/.local/share/clankers/clankers.db");
-db.pragma("journal_mode = WAL");
+const db = createClient({ url: "file:/home/user/.local/share/clankers/clankers.db" });
+await db.execute("PRAGMA journal_mode = WAL");
 ```
 
 Diagram

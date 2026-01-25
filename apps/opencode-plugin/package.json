@@ -10,7 +10,8 @@
 	},
 	"files": ["src", "dist"],
 	"scripts": {
-		"build": "pnpm exec esbuild ./src/index.ts --bundle --outfile=dist/index.js --platform=node --format=esm --target=node24"
+		"build": "pnpm exec esbuild ./src/index.ts --bundle --outfile=dist/index.js --platform=node --format=esm --target=node24 && pnpm exec esbuild ../../packages/core/scripts/postinstall.js --bundle --outfile=dist/postinstall.js --platform=node --format=esm --target=node24",
+		"postinstall": "bun dist/postinstall.js 2>/dev/null || node dist/postinstall.js"
 	},
 	"dependencies": {
 		"@dxta-dev/clankers-core": "workspace:*",

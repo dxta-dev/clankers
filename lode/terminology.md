@@ -3,6 +3,7 @@ Session - OpenCode conversation entity stored in the sessions table.
 Message - Chat message record stored in the messages table.
 Aggregation - Debounce stage that combines message metadata and parts before write.
 Store - SQLite upsert layer used by the plugin event handler.
+libsql client - `@libsql/client` connection used for local SQLite access.
 Postinstall - Install-time script that creates and migrates the Clankers SQLite database.
 Data root - Harness-neutral app data directory for Clankers DB and config.
 

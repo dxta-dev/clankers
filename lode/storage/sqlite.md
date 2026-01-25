@@ -9,14 +9,14 @@ Invariants
 - Postinstall handles creation and migrations before the plugin runs.
 - The runtime open path does not create files or run migrations.
 - Events are skipped when the database is missing to avoid implicit creation.
-- SQLite access uses `better-sqlite3` for Node/Bun compatibility.
+- SQLite access uses `@libsql/client` with a local `file:` URL for Node/Bun compatibility.
 - The database lives under the harness-neutral data root; see `storage/paths.md`.
 
 Links: [summary](../summary.md), [schemas](../data-model/schemas.md), [paths](paths.md), [postinstall](../installation/postinstall.md)
 
 Example
 ```ts
-const db = openDb();
+const db = await openDb();
 ```
 
 Diagram

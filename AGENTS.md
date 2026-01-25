@@ -2,7 +2,7 @@
 
 This repo is an OpenCode plugin written in TypeScript (ESM) and run on Node or
 Bun. It stores OpenCode session/message events in local SQLite using
-`better-sqlite3`.
+`@libsql/client`.
 Use this file as the operational guide for agentic coding work.
 
 ## Build, Lint, Test
@@ -36,7 +36,7 @@ Use this file as the operational guide for agentic coding work.
 ## Tooling & Environment
 - TypeScript is strict and ESM-only.
 - Module resolution is `bundler`; use explicit file extensions.
-- Runtime supports Node; use `better-sqlite3` APIs.
+- Runtime supports Node; use `@libsql/client` APIs.
 - Biome handles formatting and linting; do not hand-format.
 - pnpm manages workspace dependencies; use `pnpm-lock.yaml`.
 

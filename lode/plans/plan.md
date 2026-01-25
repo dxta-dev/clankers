@@ -9,7 +9,7 @@ Goals
 - Validate payloads with Zod.
 
 Scope
-- Runtime: Node or Bun, better-sqlite3.
+- Runtime: Node or Bun, @libsql/client.
 - DB path default: TBD; move to OS-specific app data root shared across harnesses.
 
 Implementation steps

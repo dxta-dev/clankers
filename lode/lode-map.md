@@ -10,11 +10,13 @@
   - [opencode/event-handling](opencode/event-handling.md)
 - storage/
   - [storage/sqlite](storage/sqlite.md)
-  - [storage/paths](storage/paths.md)
+- [storage/paths](storage/paths.md)
 - ingestion/
   - [ingestion/aggregation](ingestion/aggregation.md)
 - installation/
 - [installation/postinstall](installation/postinstall.md)
+- plans/
+  - [plans/libsql-local](plans/libsql-local.md)
 - release/
   - [release/npm-release](release/npm-release.md)
 - ci/

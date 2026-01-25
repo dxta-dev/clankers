@@ -1,7 +1,8 @@
-import Database from "better-sqlite3";
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
+import { pathToFileURL } from "node:url";
+import { createClient } from "@libsql/client";
 
 const DATA_DIR_NAME = "clankers";
 const DEFAULT_DB_FILE = "clankers.db";
@@ -27,10 +28,10 @@ if (!existsSync(configPath)) {
 	writeFileSync(configPath, "{}\n", "utf8");
 }
 
-const db = new Database(dbPath);
-db.pragma("journal_mode = WAL");
-db.pragma("foreign_keys = ON");
-db.exec(`
+const client = createClient({ url: pathToFileURL(dbPath).href });
+await client.execute("PRAGMA journal_mode = WAL");
+await client.execute("PRAGMA foreign_keys = ON");
+await client.execute(`
   CREATE TABLE IF NOT EXISTS sessions (
     id TEXT PRIMARY KEY,
     title TEXT,
@@ -45,7 +46,7 @@ db.exec(`
     updated_at INTEGER
   );
 `);
-db.exec(`
+await client.execute(`
   CREATE TABLE IF NOT EXISTS messages (
     id TEXT PRIMARY KEY,
     session_id TEXT,
@@ -60,7 +61,7 @@ db.exec(`
     FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
   );
 `);
-db.close();
+await client.close();
 
 if (!existed) {
 	console.log(`Clankers database created at ${dbPath}`);

@@ -12,7 +12,10 @@ Example
 ```ts
 const parsed = SessionEventSchema.safeParse(event.properties);
 if (!parsed.success) return;
-store.upsertSession({ id: parsed.data.id, title: parsed.data.title ?? "Untitled" });
+await store.upsertSession({
+	id: parsed.data.id,
+	title: parsed.data.title ?? "Untitled",
+});
 ```
 
 Diagram

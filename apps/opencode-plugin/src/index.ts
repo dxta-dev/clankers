@@ -44,7 +44,7 @@ async function handleEvent(
 			session.tokens?.output || session.usage?.completionTokens || 0;
 		const cost = session.cost || session.usage?.cost || 0;
 
-		store.upsertSession({
+		await store.upsertSession({
 			id: session.id,
 			title: session.title || "Untitled Session",
 			projectPath,
@@ -64,19 +64,19 @@ async function handleEvent(
 		const parsed = MessageMetadataSchema.safeParse(info);
 		if (!parsed.success) return;
 		stageMessageMetadata(parsed.data);
-		scheduleMessageFinalize(
-			parsed.data.id,
-			({ messageId, sessionId, role, textContent, info }) => {
-				const finalRole =
-					role === "unknown" || !role ? inferRole(textContent) : role;
-				const durationMs =
-					info.time?.completed && info.time?.created
-						? info.time.completed - info.time.created
-						: undefined;
-				store.upsertMessage({
-					id: messageId,
-					sessionId,
-					role: finalRole,
+			scheduleMessageFinalize(
+				parsed.data.id,
+				({ messageId, sessionId, role, textContent, info }) => {
+					const finalRole =
+						role === "unknown" || !role ? inferRole(textContent) : role;
+					const durationMs =
+						info.time?.completed && info.time?.created
+							? info.time.completed - info.time.created
+							: undefined;
+					void store.upsertMessage({
+						id: messageId,
+						sessionId,
+						role: finalRole,
 					textContent,
 					model: info.modelID,
 					promptTokens: info.tokens?.input,
@@ -94,19 +94,19 @@ async function handleEvent(
 		const parsed = MessagePartSchema.safeParse(part);
 		if (!parsed.success) return;
 		stageMessagePart(parsed.data);
-		scheduleMessageFinalize(
-			parsed.data.messageID,
-			({ messageId, sessionId, role, textContent, info }) => {
-				const finalRole =
-					role === "unknown" || !role ? inferRole(textContent) : role;
-				const durationMs =
-					info.time?.completed && info.time?.created
-						? info.time.completed - info.time.created
-						: undefined;
-				store.upsertMessage({
-					id: messageId,
-					sessionId,
-					role: finalRole,
+			scheduleMessageFinalize(
+				parsed.data.messageID,
+				({ messageId, sessionId, role, textContent, info }) => {
+					const finalRole =
+						role === "unknown" || !role ? inferRole(textContent) : role;
+					const durationMs =
+						info.time?.completed && info.time?.created
+							? info.time.completed - info.time.created
+							: undefined;
+					void store.upsertMessage({
+						id: messageId,
+						sessionId,
+						role: finalRole,
 					textContent,
 					model: info.modelID,
 					promptTokens: info.tokens?.input,
@@ -138,7 +138,7 @@ export const ClankersPlugin: Plugin = async ({ client }) => {
 		});
 	} else {
 		try {
-			const db = openDb();
+			const db = await openDb();
 			store = createStore(db);
 			void client.app.log({
 				body: {
