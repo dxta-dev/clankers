@@ -16,11 +16,14 @@
   - [ingestion/aggregation](ingestion/aggregation.md)
 - daemon/
   - [daemon/architecture](daemon/architecture.md)
+- build/
+  - [build/overview](build/overview.md)
 - plans/
   - [plans/plan](plans/plan.md)
   - [plans/libsql-local](plans/libsql-local.md)
   - [plans/go-daemon-migration](plans/go-daemon-migration.md)
   - [plans/nix-build-system](plans/nix-build-system.md)
+  - [plans/modernc-sqlite](plans/modernc-sqlite.md)
 - release/
   - [release/npm-release](release/npm-release.md)
 - ci/
