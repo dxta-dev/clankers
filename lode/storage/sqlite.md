@@ -1,29 +1,57 @@
 # SQLite storage
 
-The plugin stores sessions and messages in a local SQLite database created and migrated during package installation via a postinstall script. At runtime the plugin only opens an existing database, enables WAL and foreign keys, and skips events with a warning if the database is missing.
+The clankers-daemon owns the SQLite database. It creates the schema on startup, enables WAL mode and foreign keys, and handles all writes via JSON-RPC methods. Plugins no longer access SQLite directly.
 
 Invariants
 - DB path resolves from the harness-neutral data root (see `storage/paths.md`) and can be overridden via `CLANKERS_DB_PATH`.
 - WAL mode and foreign key enforcement are enabled on every open.
 - `messages.session_id` references `sessions.id` with cascade delete.
-- Postinstall handles creation and migrations before the plugin runs.
-- The runtime open path does not create files or run migrations.
-- Events are skipped when the database is missing to avoid implicit creation.
-- SQLite access uses `@libsql/client` with a local `file:` URL for Node/Bun compatibility.
-- The database lives under the harness-neutral data root; see `storage/paths.md`.
+- The daemon handles creation and migrations; postinstall is deprecated.
+- Plugins call the daemon over JSON-RPC; no `@libsql/client` in plugin code.
 
-Links: [summary](../summary.md), [schemas](../data-model/schemas.md), [paths](paths.md), [postinstall](../installation/postinstall.md)
+Schema
+```sql
+CREATE TABLE sessions (
+  id TEXT PRIMARY KEY,
+  title TEXT,
+  project_path TEXT,
+  project_name TEXT,
+  model TEXT,
+  provider TEXT,
+  prompt_tokens INTEGER,
+  completion_tokens INTEGER,
+  cost REAL,
+  created_at INTEGER,
+  updated_at INTEGER
+);
+
+CREATE TABLE messages (
+  id TEXT PRIMARY KEY,
+  session_id TEXT,
+  role TEXT,
+  text_content TEXT,
+  model TEXT,
+  prompt_tokens INTEGER,
+  completion_tokens INTEGER,
+  duration_ms INTEGER,
+  created_at INTEGER,
+  completed_at INTEGER,
+  FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
+);
+```
+
+Links: [summary](../summary.md), [schemas](../data-model/schemas.md), [paths](paths.md), [daemon](../daemon/architecture.md)
 
 Example
-```ts
-const db = await openDb();
+```go
+db, err := sql.Open("sqlite3", dbPath+"?_journal_mode=WAL&_foreign_keys=ON")
 ```
 
 Diagram
 ```mermaid
 flowchart LR
-  Install[postinstall] --> Migrate[Create tables]
-  Migrate --> Ready[DB ready]
-  Ready --> Open[openDb()]
+  Daemon[clankers-daemon] --> Open[Open DB]
   Open --> WAL[PRAGMA WAL]
+  WAL --> FK[PRAGMA foreign_keys]
+  FK --> Ready[Ready for writes]
 ```

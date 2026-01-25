@@ -1,29 +1,33 @@
 # Agent Guide for @dxta-dev/clankers
 
-This repo is an OpenCode plugin written in TypeScript (ESM) and run on Node or
-Bun. It stores OpenCode session/message events in local SQLite using
-`@libsql/client`.
-Use this file as the operational guide for agentic coding work.
+Clankers is a pnpm monorepo with TypeScript ESM packages (OpenCode, Cursor,
+Claude Code) and a Go daemon. Plugins validate events with Zod, aggregate
+message parts in memory, and send JSON-RPC calls to the daemon, which owns all
+SQLite schema creation, migrations, and upserts. Use this file as the
+operational guide for agentic coding work.
 
 ## Build, Lint, Test
 - Install deps: `pnpm install`
 - Typecheck: `pnpm check` (tsc --noEmit)
 - Lint: `pnpm lint` (Biome)
 - Format: `pnpm format` (Biome, write mode)
-- Build: `pnpm build` (runs esbuild via Node 24 for app packages).
+- Build all app packages: `pnpm build`
+- Build a single app: `pnpm build:opencode`, `pnpm build:cursor`, `pnpm build:claude`
 - Release workflow publishes TypeScript sources without a build step.
 
 ### Running a Single Test
-- There is no test runner configured in this repo.
-- If you add tests, also add a script and document a single-test command here.
-- Current guidance: treat tests as “not configured.”
+- There is no test runner configured in this repo (TypeScript or Go).
+- No `*_test.go` files are present.
+- If you add tests, add a script and document a single-test command here.
+
+## Cursor/Copilot Rules
+- No `.cursor/rules/`, `.cursorrules`, or `.github/copilot-instructions.md` files found.
 
 ## Source of Truth
 - `README.md` describes plugin usage and local configuration.
 - `lode/practices.md` contains engineering practices (validation, upserts).
 - `lode/opencode/plugins.md` documents OpenCode plugin invariants.
 - `lode/release/npm-release.md` describes release and publishing constraints.
-- No Cursor or Copilot instruction files were found in this repo.
 
 ## Project Structure
 - `apps/opencode-plugin/src/index.ts` registers the plugin and handles OpenCode events.
@@ -31,12 +35,16 @@ Use this file as the operational guide for agentic coding work.
 - `packages/core/src/store.ts` owns SQLite prepared statements and upserts.
 - `packages/core/src/schemas.ts` defines Zod schemas for validation boundaries.
 - `packages/core/src/aggregation.ts` handles message assembly.
-- `packages/core/scripts/postinstall.js` initializes the SQLite database.
+- `packages/core/src/paths.ts` resolves OS-specific data paths.
+- `packages/daemon/cmd/clankers-daemon/main.go` is the daemon entry point.
+- `packages/daemon/internal/rpc/rpc.go` handles JSON-RPC handlers.
+- `packages/daemon/internal/storage/storage.go` owns SQLite persistence.
 
 ## Tooling & Environment
 - TypeScript is strict and ESM-only.
 - Module resolution is `bundler`; use explicit file extensions.
-- Runtime supports Node; use `@libsql/client` APIs.
+- Runtime supports Node; use `@libsql/client` for SQLite access in TS packages.
+- The Go daemon owns DB creation/migrations and socket handling.
 - Biome handles formatting and linting; do not hand-format.
 - pnpm manages workspace dependencies; use `pnpm-lock.yaml`.
 
@@ -74,7 +82,19 @@ Use this file as the operational guide for agentic coding work.
 - Surface user-visible events with `client.tui.showToast` when needed.
 - Do not spam logs; rely on OpenCode client logging sparingly.
 
-## Database Practices
+### Data & SQL Handling
+- Keep SQL in template literals for readability.
+- Use `null` for optional DB values rather than `undefined`.
+- Use default values for tokens and cost when missing.
+- Maintain explicit mapping between TS and DB fields.
+- Avoid implicit conversions; be explicit about optional values.
+
+### Go Daemon Style
+- Run `gofmt` on Go files; keep functions small and focused.
+- Return errors early; avoid panics except at process boundaries.
+- Keep RPC contracts aligned with the TS client; update both sides together.
+
+## Database & Storage Practices
 - Always enable WAL: `PRAGMA journal_mode = WAL;`.
 - Always enable FK enforcement: `PRAGMA foreign_keys = ON;`.
 - Use idempotent upserts for sessions and messages.
@@ -96,13 +116,6 @@ Use this file as the operational guide for agentic coding work.
 - Debounce finalization per message ID (current window: 800ms).
 - Infer role when metadata role is unknown or missing.
 - Prevent duplicate writes for the same message ID.
-
-## Formatting, Layout, and Data Handling
-- Keep SQL in template literals for readability.
-- Use `null` for optional DB values rather than `undefined`.
-- Use default values for tokens and cost when missing.
-- Maintain explicit mapping between TS and DB fields.
-- Avoid implicit conversions; be explicit about optional values.
 
 ## Examples (Match Existing Style)
 
