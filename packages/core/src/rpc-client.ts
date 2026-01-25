@@ -1,9 +1,10 @@
 import { createConnection } from "node:net";
+import { homedir } from "node:os";
 import { join } from "node:path";
-import { getDataDir } from "./paths.js";
 
 const SOCKET_NAME = "dxta-clankers.sock";
 const CONTENT_LENGTH_HEADER = "Content-Length: ";
+const DATA_DIR_NAME = "clankers";
 
 interface RpcRequest {
 	jsonrpc: "2.0";
@@ -86,6 +87,23 @@ function getSocketPath(): string {
 		return "\\\\.\\pipe\\dxta-clankers";
 	}
 	return join(getDataDir(), SOCKET_NAME);
+}
+
+function getDataRoot(): string {
+	if (process.env.CLANKERS_DATA_PATH) {
+		return process.env.CLANKERS_DATA_PATH;
+	}
+	if (process.platform === "win32") {
+		return process.env.APPDATA ?? join(homedir(), "AppData", "Roaming");
+	}
+	if (process.platform === "darwin") {
+		return join(homedir(), "Library", "Application Support");
+	}
+	return process.env.XDG_DATA_HOME ?? join(homedir(), ".local", "share");
+}
+
+function getDataDir(): string {
+	return join(getDataRoot(), DATA_DIR_NAME);
 }
 
 let requestIdCounter = 0;

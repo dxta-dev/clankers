@@ -167,7 +167,6 @@ export const ClankersPlugin: Plugin = async ({ client }) => {
 			try {
 				await handleEvent(event, rpc);
 			} catch (error) {
-				// Connection may have been lost; log but don't crash
 				void client.app.log({
 					body: {
 						service: "clankers",

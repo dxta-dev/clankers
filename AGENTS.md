@@ -31,11 +31,9 @@ operational guide for agentic coding work.
 
 ## Project Structure
 - `apps/opencode-plugin/src/index.ts` registers the plugin and handles OpenCode events.
-- `packages/core/src/db.ts` owns database connection, PRAGMAs, and schema creation.
-- `packages/core/src/store.ts` owns SQLite prepared statements and upserts.
 - `packages/core/src/schemas.ts` defines Zod schemas for validation boundaries.
 - `packages/core/src/aggregation.ts` handles message assembly.
-- `packages/core/src/paths.ts` resolves OS-specific data paths.
+- `packages/core/src/rpc-client.ts` owns the JSON-RPC client for the daemon.
 - `packages/daemon/cmd/clankers-daemon/main.go` is the daemon entry point.
 - `packages/daemon/internal/rpc/rpc.go` handles JSON-RPC handlers.
 - `packages/daemon/internal/storage/storage.go` owns SQLite persistence.
@@ -43,7 +41,7 @@ operational guide for agentic coding work.
 ## Tooling & Environment
 - TypeScript is strict and ESM-only.
 - Module resolution is `bundler`; use explicit file extensions.
-- Runtime supports Node; use `@libsql/client` for SQLite access in TS packages.
+- Runtime supports Node; TS packages call the daemon over JSON-RPC for SQLite access.
 - The Go daemon owns DB creation/migrations and socket handling.
 - Biome handles formatting and linting; do not hand-format.
 - pnpm manages workspace dependencies; use `pnpm-lock.yaml`.
@@ -70,7 +68,7 @@ operational guide for agentic coding work.
 - Use explicit types for public function signatures.
 
 ### Naming Conventions
-- Functions: lowerCamelCase (`openDb`, `scheduleMessageFinalize`).
+- Functions: lowerCamelCase (`createRpcClient`, `scheduleMessageFinalize`).
 - Constants: UPPER_SNAKE_CASE (`DEFAULT_DB_PATH`).
 - Zod schemas: PascalCase with `Schema` suffix.
 - SQL fields: snake_case in database, camelCase in TS.
@@ -99,7 +97,7 @@ operational guide for agentic coding work.
 - Always enable FK enforcement: `PRAGMA foreign_keys = ON;`.
 - Use idempotent upserts for sessions and messages.
 - Use prepared statements for repeated writes.
-- Default DB path: OS app data root under `clankers/` (see `packages/core/src/paths.ts`).
+- Default DB path: OS app data root under `clankers/` (see `packages/daemon/internal/paths/paths.go`).
 - Allow override via `CLANKERS_DB_PATH`.
 
 ## Plugin Behavior Conventions
@@ -121,12 +119,11 @@ operational guide for agentic coding work.
 
 ```ts
 import type { Plugin } from "@opencode-ai/plugin";
-import { createStore, openDb } from "@dxta-dev/clankers-core";
+import { createRpcClient } from "@dxta-dev/clankers-core";
 
 export const ClankersPlugin: Plugin = async () => {
-	const db = openDb();
-	const store = createStore(db);
-	return { event: async () => store };
+	const rpc = createRpcClient({ clientName: "opencode", clientVersion: "0.1.0" });
+	return { event: async () => rpc };
 };
 ```
 

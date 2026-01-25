@@ -21,14 +21,14 @@ project-level `opencode.json`):
 }
 ```
 
-Install the package (npm or Bun). The postinstall step creates and migrates the
-local database before OpenCode loads the plugin.
+Install the package (npm or Bun). The clankers-daemon creates and migrates the
+local database on startup.
 
 ## Quick start
 
 1. Add the plugin to your OpenCode config (or drop a built plugin into
    `.opencode/plugins/`).
-2. Install the package so postinstall creates the database.
+2. Start `clankers-daemon` so it can create the database.
 3. Restart OpenCode so the plugin loads with local SQLite sync enabled.
 
 ## Configuration
@@ -44,7 +44,7 @@ Defaults
 - Database: `<data root>/clankers.db`
 - Config: `<data root>/config.json`
 
-Postinstall creates an empty `config.json` if it is missing.
+The daemon creates an empty `config.json` if it is missing.
 
 Overrides
 - Set `CLANKERS_DATA_PATH` to change the app data root.

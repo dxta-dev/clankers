@@ -8,9 +8,8 @@
 			"default": "./src/index.ts"
 		}
 	},
-	"files": ["src", "scripts"],
+	"files": ["src"],
 	"dependencies": {
-		"@libsql/client": "0.14.0",
 		"zod": "4.3.5"
 	}
 }

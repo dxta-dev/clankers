@@ -6,7 +6,7 @@ Invariants
 - DB path resolves from the harness-neutral data root (see `storage/paths.md`) and can be overridden via `CLANKERS_DB_PATH`.
 - WAL mode and foreign key enforcement are enabled on every open.
 - `messages.session_id` references `sessions.id` with cascade delete.
-- The daemon handles creation and migrations; postinstall is deprecated.
+- The daemon handles creation and migrations on startup.
 - Plugins call the daemon over JSON-RPC; no `@libsql/client` in plugin code.
 
 Schema

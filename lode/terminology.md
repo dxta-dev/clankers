@@ -5,7 +5,6 @@ Aggregation - Debounce stage that combines message metadata and parts before RPC
 Store - SQLite upsert layer inside the daemon.
 clankers-daemon - Go binary that owns all SQLite operations and serves JSON-RPC.
 RPC client - TypeScript client that connects to the daemon over Unix socket.
-Postinstall - Install-time script (deprecated); the daemon now handles DB creation.
 Data root - Harness-neutral app data directory for Clankers DB, config, and socket.
 
 Links: [summary](summary.md), [practices](practices.md), [daemon](daemon/architecture.md)

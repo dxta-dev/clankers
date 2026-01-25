@@ -9,15 +9,15 @@ Invariants
 - `CLANKERS_DATA_PATH` overrides the data root for both DB and config.
 - `CLANKERS_DB_PATH` overrides only the database file path.
 - Config is stored as `config.json` alongside `clankers.db`.
-- Postinstall creates `config.json` if it does not exist.
+- The daemon creates `config.json` if it does not exist.
 
-Links: [summary](../summary.md), [sqlite](sqlite.md), [postinstall](../installation/postinstall.md)
+Links: [summary](../summary.md), [sqlite](sqlite.md), [daemon](../daemon/architecture.md)
 
 Example
-```ts
-const dataRoot = getDataRoot();
-const dbPath = getDbPath();
-const configPath = getConfigPath();
+```go
+dataRoot := paths.GetDataRoot()
+dbPath := paths.GetDbPath()
+configPath := paths.GetConfigPath()
 ```
 
 Diagram

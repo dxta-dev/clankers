@@ -6,22 +6,22 @@ Invariants
 - `session.created` is de-duplicated via an in-memory `syncedSessions` set.
 - `session.updated` and `session.idle` always upsert the latest session data.
 - `message.updated` and `message.part.updated` both feed the aggregation stage.
-- The SQLite store is opened during plugin initialization after postinstall migrations.
-- Events are skipped if the database is missing or cannot be opened.
+- Plugins assume the daemon owns database creation and only write via RPC.
+- Events are skipped if the daemon is unreachable.
 
 Links: [plugins](plugins.md), [aggregation](../ingestion/aggregation.md), [sqlite](../storage/sqlite.md)
 
 Example
 ```ts
 if (event.type === "session.updated") {
-  store.upsertSession({ id: session.id, title: session.title ?? "Untitled" });
+  rpc.upsertSession({ id: session.id, title: session.title ?? "Untitled" });
 }
 ```
 
 Diagram
 ```mermaid
 flowchart LR
-  SessionEvents[session.*] --> SessionUpsert[store.upsertSession]
+  SessionEvents[session.*] --> SessionUpsert[rpc.upsertSession]
   MessageEvents[message.*] --> Aggregate[aggregation]
-  Aggregate --> MessageUpsert[store.upsertMessage]
+  Aggregate --> MessageUpsert[rpc.upsertMessage]
 ```

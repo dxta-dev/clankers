@@ -1,6 +1,6 @@
 # OpenCode plugins
 
-OpenCode plugins are JS/TS modules that export plugin functions returning hook handlers. Plugins load from project or global directories, or from npm via `opencode.json`. Clankers ships its OpenCode entry point from `apps/opencode-plugin/src/index.ts`, depends on `@dxta-dev/clankers-core`, and relies on the core postinstall script to initialize the SQLite database in a harness-neutral data directory.
+OpenCode plugins are JS/TS modules that export plugin functions returning hook handlers. Plugins load from project or global directories, or from npm via `opencode.json`. Clankers ships its OpenCode entry point from `apps/opencode-plugin/src/index.ts` and depends on `@dxta-dev/clankers-core` for shared schemas, aggregation, and RPC client helpers.
 
 We use `@opencode-ai/plugin` for TypeScript type definitions (`Plugin`) and helper utilities like `tool()` for custom tools. Pin `@opencode-ai/plugin` to version `1.1.30`. Use `client.tui.showToast` to surface user-facing notifications.
 
@@ -8,9 +8,9 @@ Invariants
 - Plugins load from global config, project config, global plugin dir, then project plugin dir.
 - npm plugins are installed via Bun and cached in `~/.cache/opencode/node_modules/`.
 - Hook names match the documented event list (session, message, tool, etc.).
-- Clankers uses core postinstall to create/migrate the SQLite database; packaging or OpenCode still handles plugin file placement.
+- Database creation/migrations are handled by the clankers-daemon, not the plugin.
 
-Links: [summary](../summary.md), [practices](../practices.md), [schemas](../data-model/schemas.md), [postinstall](../installation/postinstall.md)
+Links: [summary](../summary.md), [practices](../practices.md), [schemas](../data-model/schemas.md), [daemon](../daemon/architecture.md)
 
 Example
 ```ts
