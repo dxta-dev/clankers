@@ -21,6 +21,55 @@
         system:
         let
           pkgs = import nixpkgs { inherit system; };
+
+          # Shared pnpm dependencies for all TypeScript packages
+          pnpmDeps = pkgs.fetchPnpmDeps {
+            pname = "clankers-workspace";
+            version = "0.1.0";
+            src = ./.;
+            hash = "sha256-s5ST8VDMv9nO//7xYY8ejIw4+dm5i6IrLCr0i2FrM00=";
+            fetcherVersion = 3;
+          };
+
+          # Helper to build TypeScript apps
+          mkTsApp =
+            {
+              pname,
+              appDir,
+              filterName,
+            }:
+            pkgs.stdenv.mkDerivation {
+              inherit pname;
+              version = "0.1.0";
+              src = ./.;
+
+              nativeBuildInputs = [
+                pkgs.nodejs_24
+                pkgs.pnpm
+                pkgs.pnpmConfigHook
+              ];
+
+              inherit pnpmDeps;
+
+              buildPhase = ''
+                runHook preBuild
+                pnpm --filter ${filterName} build
+                runHook postBuild
+              '';
+
+              installPhase = ''
+                runHook preInstall
+                mkdir -p $out
+                cp -r ${appDir}/dist $out/
+                cp -r ${appDir}/src $out/
+                cp ${appDir}/package.json $out/
+                runHook postInstall
+              '';
+
+              meta = {
+                description = "Clankers plugin for ${pname}";
+              };
+            };
         in
         {
           clankers-daemon = pkgs.buildGoModule {
@@ -37,6 +86,24 @@
               description = "Clankers daemon - SQLite persistence for AI harness plugins";
               mainProgram = "clankers-daemon";
             };
+          };
+
+          clankers-opencode = mkTsApp {
+            pname = "clankers-opencode";
+            appDir = "apps/opencode-plugin";
+            filterName = "@dxta-dev/clankers-opencode";
+          };
+
+          clankers-cursor = mkTsApp {
+            pname = "clankers-cursor";
+            appDir = "apps/cursor-plugin";
+            filterName = "@dxta-dev/clankers-cursor";
+          };
+
+          clankers-claude-code = mkTsApp {
+            pname = "clankers-claude-code";
+            appDir = "apps/claude-code-plugin";
+            filterName = "@dxta-dev/clankers-claude-code";
           };
 
           default = self.packages.${system}.clankers-daemon;

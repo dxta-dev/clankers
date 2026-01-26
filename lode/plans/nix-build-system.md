@@ -55,34 +55,49 @@ Build output: single `clankers-daemon` binary.
 ### TypeScript Apps
 
 Uses `stdenv.mkDerivation` with pnpm for workspace builds. Dependencies fetched
-via `pnpm.fetchDeps` for reproducibility.
+via `fetchPnpmDeps` for reproducibility. A shared `mkTsApp` helper creates
+consistent derivations for all three plugins.
 
 ```nix
-clankers-opencode = pkgs.stdenv.mkDerivation {
-  pname = "clankers-opencode";
+# Shared pnpm dependencies
+pnpmDeps = pkgs.fetchPnpmDeps {
+  pname = "clankers-workspace";
   version = "0.1.0";
   src = ./.;
-  
-  nativeBuildInputs = [ pkgs.nodejs_24 pkgs.pnpm ];
-  
-  pnpmDeps = pkgs.pnpm.fetchDeps {
-    inherit src;
-    hash = "sha256-...";  # from pnpm-lock.yaml
+  hash = "sha256-s5ST8VDMv9nO//7xYY8ejIw4+dm5i6IrLCr0i2FrM00=";
+  fetcherVersion = 3;
+};
+
+# Helper for TS apps
+mkTsApp = { pname, appDir, filterName }:
+  pkgs.stdenv.mkDerivation {
+    inherit pname pnpmDeps;
+    version = "0.1.0";
+    src = ./.;
+    
+    nativeBuildInputs = [ pkgs.nodejs_24 pkgs.pnpm pkgs.pnpmConfigHook ];
+    
+    buildPhase = ''
+      pnpm --filter ${filterName} build
+    '';
+    
+    installPhase = ''
+      mkdir -p $out
+      cp -r ${appDir}/dist $out/
+      cp -r ${appDir}/src $out/
+      cp ${appDir}/package.json $out/
+    '';
   };
-  
-  buildPhase = ''
-    pnpm install --offline
-    pnpm --filter @dxta-dev/clankers-opencode build
-  '';
-  
-  installPhase = ''
-    mkdir -p $out
-    cp -r apps/opencode-plugin/dist $out/
-  '';
+
+# Usage
+clankers-opencode = mkTsApp {
+  pname = "clankers-opencode";
+  appDir = "apps/opencode-plugin";
+  filterName = "@dxta-dev/clankers-opencode";
 };
 ```
 
-Build output: bundled JS in `dist/`.
+Build output: bundled JS in `dist/`, plus `src/` and `package.json` for npm publishing.
 
 ## Checks
 
@@ -160,10 +175,13 @@ Benefits:
 - Verified `nix build .#clankers-daemon` works
 - Uses `CGO_ENABLED=0` with `modernc.org/sqlite`
 
-### Phase 2: TypeScript Packages
-- Add `pnpm.fetchDeps` for node_modules
-- Add derivations for each app
-- Verify `nix build .#clankers-opencode` works
+### Phase 2: TypeScript Packages ✓
+- Added `fetchPnpmDeps` with `fetcherVersion = 3`
+- Calculated `pnpmDeps` hash: `sha256-s5ST8VDMv9nO//7xYY8ejIw4+dm5i6IrLCr0i2FrM00=`
+- Added `mkTsApp` helper for consistent derivations
+- Added derivations for all three apps: opencode, cursor, claude-code
+- Uses `pnpmConfigHook` for reproducible node_modules
+- Verified all builds work: `nix build .#clankers-opencode`, `.#clankers-cursor`, `.#clankers-claude-code`
 
 ### Phase 3: Checks
 - Add lint check
