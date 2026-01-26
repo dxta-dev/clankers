@@ -6,31 +6,36 @@ on:
     branches:
       - main
 
+# TODO: Add Cachix integration for faster CI builds
+# See: https://github.com/cachix/cachix-action
+
 jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v27
+
+      - name: Run checks (lint, typecheck)
+        run: nix flake check
+
   build:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 24
+      - name: Install Nix
+        uses: cachix/install-nix-action@v27
 
-      - name: Set up pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 9
+      - name: Build daemon
+        run: nix build .#clankers-daemon
 
-      - name: Install dependencies
-        run: pnpm install
-
-      - name: Lint
-        run: pnpm lint
-
-      - name: Typecheck
-        run: pnpm check
-
-      - name: Build apps
-        run: pnpm --filter "./apps/**" build
+      - name: Build TypeScript apps
+        run: |
+          nix build .#clankers-opencode
+          nix build .#clankers-cursor
+          nix build .#clankers-claude-code

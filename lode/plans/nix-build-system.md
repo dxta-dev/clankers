@@ -159,8 +159,11 @@ Replace GitHub Actions setup with Nix:
 # After
 - uses: cachix/install-nix-action@v27
 - run: nix flake check
-- run: nix build
+- run: nix build .#clankers-daemon
+- run: nix build .#clankers-opencode  # etc.
 ```
+
+Note: Cachix integration not yet added. Currently builds from scratch each CI run.
 
 Benefits:
 - CI uses exact same environment as local dev
@@ -183,10 +186,11 @@ Benefits:
 - Uses `pnpmConfigHook` for reproducible node_modules
 - Verified all builds work: `nix build .#clankers-opencode`, `.#clankers-cursor`, `.#clankers-claude-code`
 
-### Phase 3: Checks
-- Add lint check
-- Add typecheck
-- Update CI workflow to use `nix flake check`
+### Phase 3: Checks ✓
+- Added `checks.lint` using Biome directly (no pnpm deps needed)
+- Added `checks.typecheck` using pnpmDeps + `pnpm check`
+- Replaced CI workflow with Nix-based approach
+- TODO: Add Cachix integration for faster CI builds
 
 ### Phase 4: Integration Testing
 - Add check that starts daemon and validates RPC

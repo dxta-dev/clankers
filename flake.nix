@@ -110,6 +110,59 @@
         }
       );
 
+      checks = forAllSystems (
+        system:
+        let
+          pkgs = import nixpkgs { inherit system; };
+
+          # Shared pnpm dependencies for typecheck
+          pnpmDeps = pkgs.fetchPnpmDeps {
+            pname = "clankers-workspace";
+            version = "0.1.0";
+            src = ./.;
+            hash = "sha256-s5ST8VDMv9nO//7xYY8ejIw4+dm5i6IrLCr0i2FrM00=";
+            fetcherVersion = 3;
+          };
+        in
+        {
+          lint = pkgs.stdenvNoCC.mkDerivation {
+            name = "clankers-lint";
+            src = ./.;
+
+            nativeBuildInputs = [ pkgs.biome ];
+
+            buildPhase = ''
+              biome lint .
+            '';
+
+            installPhase = ''
+              touch $out
+            '';
+          };
+
+          typecheck = pkgs.stdenvNoCC.mkDerivation {
+            name = "clankers-typecheck";
+            src = ./.;
+
+            nativeBuildInputs = [
+              pkgs.nodejs_24
+              pkgs.pnpm
+              pkgs.pnpmConfigHook
+            ];
+
+            inherit pnpmDeps;
+
+            buildPhase = ''
+              pnpm check
+            '';
+
+            installPhase = ''
+              touch $out
+            '';
+          };
+        }
+      );
+
       devShells = forAllSystems (
         system:
         let
