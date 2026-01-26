@@ -18,6 +18,7 @@
   - [daemon/architecture](daemon/architecture.md)
 - build/
   - [build/overview](build/overview.md)
+  - [build/testing](build/testing.md)
 - plans/
   - [plans/plan](plans/plan.md)
   - [plans/libsql-local](plans/libsql-local.md)
@@ -51,6 +52,10 @@ flowchart TB
   Ingestion --> Aggregation[aggregation.md]
   Lode --> Daemon[daemon/]
   Daemon --> DaemonArch[architecture.md]
+  Lode --> Build[build/]
+  Build --> BuildOverview[overview.md]
+  Build --> Testing[testing.md]
+  Lode --> CI[ci/]
+  CI --> CIOverview[overview.md]
   Lode --> Plans[plans/]
-  Plans --> NixBuild[nix-build-system.md]
 ```

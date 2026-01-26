@@ -1,71 +1,86 @@
 # Build System Overview
 
-The project uses a hybrid build system: pnpm for TypeScript workspace management,
-Go toolchain for the daemon, and Nix for reproducible environments.
+The project uses Nix flakes for reproducible builds. TypeScript apps use pnpm
+for workspace management, while the Go daemon builds with `buildGoModule`.
 
-## Current State
+## Nix Flake
 
-### Nix Flake
+`flake.nix` provides packages, checks, and dev shells for all supported systems.
 
-`flake.nix` provides:
-- `packages.clankers-daemon` - Go binary built with `buildGoModule`
-- `devShells.default` - development environment
+### Packages
+
+| Package | Description |
+|---------|-------------|
+| `clankers-daemon` | Go binary (SQLite + JSON-RPC server) |
+| `clankers-opencode` | OpenCode editor plugin |
+| `clankers-cursor` | Cursor editor plugin |
+| `clankers-claude-code` | Claude Code plugin |
 
 ```bash
 # Build daemon
 nix build .#clankers-daemon
 
-# Enter dev shell
+# Build TypeScript app
+nix build .#clankers-opencode
+```
+
+### Checks
+
+| Check | Description |
+|-------|-------------|
+| `lint` | Biome lint check |
+| `typecheck` | TypeScript type check |
+| `integration` | Daemon + RPC client integration test |
+
+```bash
+# Run all checks
+nix flake check
+```
+
+### Dev Shell
+
+```bash
 nix develop
 ```
 
-### Go Daemon
+Provides: Node 24, pnpm, Go, SQLite, Biome, TypeScript LSP.
+
+## Go Daemon
 
 Location: `packages/daemon/`
-
-| File | Purpose |
-|------|---------|
-| go.mod | Module definition: `github.com/dxta-dev/clankers-daemon` |
-| go.sum | Dependencies for Nix vendorHash |
-| cmd/clankers-daemon/main.go | Entry point |
 
 Dependencies:
 - `modernc.org/sqlite` - Pure Go SQLite (no CGO)
 - `github.com/sourcegraph/jsonrpc2` - JSON-RPC server
 
-Build commands:
-```bash
-# Nix (reproducible)
-nix build .#clankers-daemon
+Nix builds with `CGO_ENABLED=0` for static binary.
 
-# Go (development)
-CGO_ENABLED=0 go build -o clankers-daemon ./cmd/clankers-daemon
+```nix
+clankers-daemon = pkgs.buildGoModule {
+  pname = "clankers-daemon";
+  src = ./packages/daemon;
+  vendorHash = "sha256-L8CHwPOjwE+DOJ1OWi0/V+tYrB2ev3iN9VU7i8WmCN0=";
+  env.CGO_ENABLED = 0;
+};
 ```
 
-### TypeScript Apps
+## TypeScript Apps
 
-Three plugin apps in `apps/`:
+Uses `fetchPnpmDeps` for reproducible node_modules, `pnpmConfigHook` for setup.
+A shared `mkTsApp` helper creates consistent derivations.
 
-| App | Package Name | Purpose |
-|-----|--------------|---------|
-| opencode-plugin | @dxta-dev/clankers-opencode | OpenCode editor plugin |
-| claude-code-plugin | @dxta-dev/clankers-claude-code | Claude Code plugin |
-| cursor-plugin | @dxta-dev/clankers-cursor | Cursor editor plugin |
-
-Shared package in `packages/`:
-- `packages/core` - shared schemas, RPC client, aggregation
-
-Build commands:
-```bash
-pnpm build              # all apps
-pnpm build:opencode     # single app
-pnpm build:claude
-pnpm build:cursor
+```nix
+pnpmDeps = pkgs.fetchPnpmDeps {
+  pname = "clankers-workspace";
+  src = ./.;
+  hash = "sha256-szJy9JkSlOYT7aCa3mfrXajbHDWpTZcQkzQdj7eiW8Q=";
+  fetcherVersion = 3;
+};
 ```
+
+Build output includes `dist/`, `src/`, and `package.json` for npm publishing.
 
 ### Workspace Scripts
-
-From root `package.json`:
 
 | Script | Command |
 |--------|---------|
@@ -74,27 +89,26 @@ From root `package.json`:
 | lint | `biome lint .` |
 | format | `biome format --write .` |
 
-## Next Steps
-
-See [nix-build-system plan](../plans/nix-build-system.md) for remaining work:
-
-- Phase 2: TypeScript package derivations (`nix build .#clankers-opencode`)
-- Phase 3: Checks (`nix flake check` for lint, typecheck)
-- Phase 4: Integration tests
-
 ```mermaid
 flowchart TB
-  subgraph Done
-    DaemonPkg[packages.clankers-daemon]
-    DevShell[devShells.default]
+  Flake[flake.nix]
+  
+  subgraph Packages
+    Daemon[clankers-daemon]
+    OpenCode[clankers-opencode]
+    Cursor[clankers-cursor]
+    Claude[clankers-claude-code]
   end
   
-  subgraph Pending
-    TsPkgs[TypeScript packages]
-    Checks[flake checks]
+  subgraph Checks
+    Lint[lint]
+    TypeCheck[typecheck]
+    Integration[integration]
   end
   
-  Done --> Pending
+  Flake --> Packages
+  Flake --> Checks
 ```
 
-Links: [dev-environment](../dev-environment.md), [daemon](../daemon/architecture.md), [nix-build-system](../plans/nix-build-system.md)
+Links: [dev-environment](../dev-environment.md), [daemon](../daemon/architecture.md),
+[testing](testing.md), [ci](../ci/overview.md)

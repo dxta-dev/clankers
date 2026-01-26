@@ -1,29 +1,49 @@
-# CI overview
+# CI Overview
 
-The repository runs a single GitHub Actions CI workflow for linting, typechecks,
-and app builds. CI installs workspace dependencies with pnpm and runs lint and
-typecheck at the repo root, then builds each app package under `apps/*` with its
-local build script.
+CI uses Nix for reproducible builds. All checks run via `nix flake check`.
 
-Invariants
-- CI runs on pull requests and pushes to `main`.
-- CI installs dependencies with pnpm and uses Node 24.
-- CI runs `pnpm lint`, `pnpm check`, and `pnpm --filter "./apps/**" build`.
-- CI does not publish or deploy artifacts.
+## Workflow
 
-Links: [summary](../summary.md), [practices](../practices.md), [release](../release/npm-release.md)
-
-Example
 ```yaml
-- name: Build apps
-  run: pnpm --filter "./apps/**" build
+- uses: cachix/install-nix-action@v27
+- run: nix flake check
+- run: nix build .#clankers-daemon
+- run: nix build .#clankers-opencode
+- run: nix build .#clankers-cursor
+- run: nix build .#clankers-claude-code
 ```
 
-Diagram
+## Checks
+
+| Check | Description |
+|-------|-------------|
+| `lint` | Biome lint (no pnpm deps needed) |
+| `typecheck` | `pnpm check` with workspace deps |
+| `integration` | Daemon + RPC client round-trip test |
+
+All checks run in parallel when possible.
+
+## Invariants
+
+- CI runs on pull requests and pushes to `main`
+- Uses Nix for reproducible environment (same as local dev)
+- Does not publish or deploy artifacts
+- Cachix integration not yet added (builds from scratch each run)
+
+## Benefits
+
+- CI uses exact same environment as local dev
+- No version drift between local and CI
+- Single command runs all validation: `nix flake check`
+
 ```mermaid
 flowchart LR
-  Trigger[PR or main push] --> Install[pnpm install]
-  Install --> Lint[pnpm lint]
-  Lint --> Check[pnpm check]
-  Check --> Build[pnpm --filter "./apps/**" build]
+  Trigger[PR or main push] --> Nix[install-nix-action]
+  Nix --> Check[nix flake check]
+  Check --> Lint[lint]
+  Check --> TypeCheck[typecheck]
+  Check --> Integration[integration]
+  Nix --> Build[nix build packages]
 ```
+
+Links: [build overview](../build/overview.md), [testing](../build/testing.md)
