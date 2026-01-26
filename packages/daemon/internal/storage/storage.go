@@ -5,7 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
-	_ "github.com/mattn/go-sqlite3"
+	_ "modernc.org/sqlite"
 )
 
 const schemaSQL = `
@@ -116,7 +116,7 @@ func EnsureDb(dbPath string) (bool, error) {
 	_, err := os.Stat(dbPath)
 	created := os.IsNotExist(err)
 
-	db, err := sql.Open("sqlite3", dbPath+"?_journal_mode=WAL&_foreign_keys=ON")
+	db, err := sql.Open("sqlite", dbPath+"?_journal_mode=WAL&_foreign_keys=ON")
 	if err != nil {
 		return false, err
 	}
@@ -130,7 +130,7 @@ func EnsureDb(dbPath string) (bool, error) {
 }
 
 func Open(dbPath string) (*Store, error) {
-	db, err := sql.Open("sqlite3", dbPath+"?_journal_mode=WAL&_foreign_keys=ON")
+	db, err := sql.Open("sqlite", dbPath+"?_journal_mode=WAL&_foreign_keys=ON")
 	if err != nil {
 		return nil, err
 	}

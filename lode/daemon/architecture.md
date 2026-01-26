@@ -1,6 +1,6 @@
 # Daemon architecture
 
-The clankers-daemon is a Go binary that owns all SQLite operations. Plugins communicate with it over JSON-RPC 2.0 via a Unix socket (or named pipe on Windows).
+The clankers-daemon is a Go binary that owns all SQLite operations. It uses `modernc.org/sqlite` (pure Go, no CGO) for database access. Plugins communicate with it over JSON-RPC 2.0 via a Unix socket (or named pipe on Windows).
 
 Invariants
 - The daemon resolves paths using the same rules as the JS implementation (see `storage/paths.md`).

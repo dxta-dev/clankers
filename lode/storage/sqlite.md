@@ -44,7 +44,8 @@ Links: [summary](../summary.md), [schemas](../data-model/schemas.md), [paths](pa
 
 Example
 ```go
-db, err := sql.Open("sqlite3", dbPath+"?_journal_mode=WAL&_foreign_keys=ON")
+// Uses modernc.org/sqlite (pure Go, no CGO required)
+db, err := sql.Open("sqlite", dbPath+"?_journal_mode=WAL&_foreign_keys=ON")
 ```
 
 Diagram

@@ -17,6 +17,32 @@
       forAllSystems = nixpkgs.lib.genAttrs supportedSystems;
     in
     {
+      packages = forAllSystems (
+        system:
+        let
+          pkgs = import nixpkgs { inherit system; };
+        in
+        {
+          clankers-daemon = pkgs.buildGoModule {
+            pname = "clankers-daemon";
+            version = "0.1.0";
+            src = ./packages/daemon;
+            vendorHash = "sha256-L8CHwPOjwE+DOJ1OWi0/V+tYrB2ev3iN9VU7i8WmCN0=";
+
+            env = {
+              CGO_ENABLED = 0;
+            };
+
+            meta = {
+              description = "Clankers daemon - SQLite persistence for AI harness plugins";
+              mainProgram = "clankers-daemon";
+            };
+          };
+
+          default = self.packages.${system}.clankers-daemon;
+        }
+      );
+
       devShells = forAllSystems (
         system:
         let

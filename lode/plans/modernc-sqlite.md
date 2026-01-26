@@ -1,6 +1,8 @@
 # Migrate to modernc.org/sqlite
 
-Replace CGO-based `mattn/go-sqlite3` with pure Go `modernc.org/sqlite` to simplify
+Status: **Implemented**
+
+Replaced CGO-based `mattn/go-sqlite3` with pure Go `modernc.org/sqlite` to simplify
 Nix builds and enable cross-compilation.
 
 ## Motivation

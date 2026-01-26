@@ -7,14 +7,16 @@ Go toolchain for the daemon, and Nix for reproducible environments.
 
 ### Nix Flake
 
-`flake.nix` provides a dev shell only. No packages or checks defined yet.
+`flake.nix` provides:
+- `packages.clankers-daemon` - Go binary built with `buildGoModule`
+- `devShells.default` - development environment
 
-```nix
-outputs = { self, nixpkgs }: {
-  devShells = forAllSystems (system: {
-    default = pkgs.mkShell { ... };
-  });
-};
+```bash
+# Build daemon
+nix build .#clankers-daemon
+
+# Enter dev shell
+nix develop
 ```
 
 ### Go Daemon
@@ -24,15 +26,21 @@ Location: `packages/daemon/`
 | File | Purpose |
 |------|---------|
 | go.mod | Module definition: `github.com/dxta-dev/clankers-daemon` |
-| go.sum | Vendored deps: sqlite3, jsonrpc2, websocket |
+| go.sum | Dependencies for Nix vendorHash |
 | cmd/clankers-daemon/main.go | Entry point |
 
-Dependencies (from go.sum):
-- `github.com/mattn/go-sqlite3` - CGO SQLite bindings
+Dependencies:
+- `modernc.org/sqlite` - Pure Go SQLite (no CGO)
 - `github.com/sourcegraph/jsonrpc2` - JSON-RPC server
-- `github.com/gorilla/websocket` - transitive dep
 
-Build command: `go build -o clankers-daemon ./cmd/clankers-daemon`
+Build commands:
+```bash
+# Nix (reproducible)
+nix build .#clankers-daemon
+
+# Go (development)
+CGO_ENABLED=0 go build -o clankers-daemon ./cmd/clankers-daemon
+```
 
 ### TypeScript Apps
 
@@ -66,29 +74,27 @@ From root `package.json`:
 | lint | `biome lint .` |
 | format | `biome format --write .` |
 
-## Migration Target
+## Next Steps
 
-See [nix-build-system plan](../plans/nix-build-system.md) for the migration roadmap.
+See [nix-build-system plan](../plans/nix-build-system.md) for remaining work:
 
-Target state:
-- `nix build .#clankers-daemon` - Go binary
-- `nix build .#clankers-opencode` - bundled JS
-- `nix flake check` - lint, typecheck, integration tests
+- Phase 2: TypeScript package derivations (`nix build .#clankers-opencode`)
+- Phase 3: Checks (`nix flake check` for lint, typecheck)
+- Phase 4: Integration tests
 
 ```mermaid
 flowchart TB
-  subgraph Current
-    DevShell[nix develop]
-    Pnpm[pnpm build]
-    GoBuild[go build]
+  subgraph Done
+    DaemonPkg[packages.clankers-daemon]
+    DevShell[devShells.default]
   end
   
-  subgraph Target
-    NixBuild[nix build]
-    NixCheck[nix flake check]
+  subgraph Pending
+    TsPkgs[TypeScript packages]
+    Checks[flake checks]
   end
   
-  Current --> Target
+  Done --> Pending
 ```
 
 Links: [dev-environment](../dev-environment.md), [daemon](../daemon/architecture.md), [nix-build-system](../plans/nix-build-system.md)
