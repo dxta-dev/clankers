@@ -18,6 +18,7 @@
   - [ingestion/aggregation](ingestion/aggregation.md)
 - daemon/
   - [daemon/architecture](daemon/architecture.md)
+  - [daemon/install](daemon/install.md)
 - build/
   - [build/overview](build/overview.md)
   - [build/testing](build/testing.md)
@@ -29,6 +30,7 @@
   - [plans/npm-packaging](plans/npm-packaging.md)
 - release/
   - [release/npm-release](release/npm-release.md)
+  - [release/daemon-release](release/daemon-release.md)
 - ci/
   - [ci/overview](ci/overview.md)
 

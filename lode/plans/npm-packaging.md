@@ -6,7 +6,8 @@ postinstall. Nix builds remain the source of truth for reproducible binaries.
 
 ## Status
 
-Phase 1 complete: Cross-compilation targets added to flake.nix.
+Phase 2 complete: Daemon binaries published to GitHub Releases on tag push.
+Phase 3a complete: Standalone install scripts (`scripts/install-daemon.sh`, `scripts/install-daemon.ps1`).
 
 ## Invariants
 
@@ -31,12 +32,10 @@ All targets can be built from any host system (cross-compilation via Go).
 ## Plan
 
 1. ~~Build daemon binaries via Nix in CI for each target platform/arch.~~ DONE
-2. Publish binaries + checksums as release artifacts (GitHub Release or a
-   dedicated npm package).
-3. Add a `postinstall` script in the OpenCode plugin that:
-   - Detects OS/arch and selects the correct binary.
-   - Downloads the binary, verifies checksum, and installs it.
-   - Runs a one-shot init to create/migrate the database.
+2. ~~Publish binaries + checksums as release artifacts.~~ DONE (GitHub Release via `release-daemon.yml`)
+3. Daemon install scripts:
+   - ~~a) Standalone shell scripts for manual install.~~ DONE (`scripts/install-daemon.sh`, `scripts/install-daemon.ps1`)
+   - b) Wire up postinstall hook in plugin packages (pending - revisit after testing standalone scripts).
 4. Runtime lookup for daemon:
    - Prefer `CLANKERS_DAEMON_PATH` if set.
    - Else use the installed binary path from postinstall.
@@ -54,21 +53,35 @@ Postinstall behavior (documented)
   and call `ensureDb` via RPC, then exit.
 - If download fails, log a clear manual install path (e.g. `nix profile install`).
 
-Example: package.json hooks
+## Standalone Install Scripts
+
+Users can install the daemon manually without npm:
+
+```bash
+# Linux/macOS
+./scripts/install-daemon.sh            # latest
+./scripts/install-daemon.sh v0.1.0     # specific version
+
+# Windows PowerShell
+.\scripts\install-daemon.ps1
+.\scripts\install-daemon.ps1 -Version v0.1.0
+```
+
+Scripts handle: OS/arch detection, download, checksum verification, PATH hints.
+
+## Postinstall Hook (Pending)
+
+Once standalone scripts are tested, wire them into npm packages:
+
 ```json
 {
   "scripts": {
-    "postinstall": "node ./scripts/install-daemon.mjs"
+    "postinstall": "sh ../../../scripts/install-daemon.sh || powershell -File ../../../scripts/install-daemon.ps1"
   }
 }
 ```
 
-Example: binary selection (pseudo)
-```ts
-const target = `${process.platform}-${process.arch}`;
-const filename = target === "win32-x64" ? "clankers-daemon.exe" : "clankers-daemon";
-const url = `https://github.com/dxta-dev/clankers/releases/download/v${version}/${target}/${filename}`;
-```
+Alternative: lazy download on first RPC connection failure.
 
 Links: [build/overview](../build/overview.md), [release/npm-release](../release/npm-release.md), [daemon](../daemon/architecture.md), [storage/paths](../storage/paths.md), [config/overview](../config/overview.md)
 

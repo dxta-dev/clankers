@@ -32,7 +32,34 @@ The flake supports:
 
 On entry, the shell displays versions of Node, pnpm, and Go.
 
-Links: [summary](summary.md), [daemon](daemon/architecture.md)
+## Installing the Daemon (End Users)
+
+For users without Nix, standalone install scripts download the daemon from GitHub Releases:
+
+```bash
+# Linux/macOS - pipe from curl
+curl -fsSL https://raw.githubusercontent.com/dxta-dev/clankers/main/scripts/install-daemon.sh | sh
+
+# Specific version
+curl -fsSL ... | sh -s -- v0.1.0
+
+# With env vars
+curl -fsSL ... | CLANKERS_INSTALL_DIR=/usr/local/bin sh
+
+# Windows (PowerShell)
+irm https://raw.githubusercontent.com/dxta-dev/clankers/main/scripts/install-daemon.ps1 | iex
+```
+
+Environment variables:
+- `CLANKERS_VERSION` - Version to install (default: latest)
+- `CLANKERS_INSTALL_DIR` - Override install location
+- `GITHUB_TOKEN` - Optional, for higher API rate limits
+
+Default install locations:
+- Linux/macOS: `~/.local/bin` or `~/bin`
+- Windows: `%LOCALAPPDATA%\clankers\bin`
+
+Links: [summary](summary.md), [daemon](daemon/architecture.md), [daemon-release](release/daemon-release.md)
 
 Example
 ```bash

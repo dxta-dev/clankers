@@ -1,0 +1,118 @@
+name: Release Daemon
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to release (e.g. v0.1.0)"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        target:
+          - name: linux-amd64
+            artifact: clankers-daemon
+          - name: linux-arm64
+            artifact: clankers-daemon
+          - name: darwin-amd64
+            artifact: clankers-daemon
+          - name: darwin-arm64
+            artifact: clankers-daemon
+          - name: windows-amd64
+            artifact: clankers-daemon.exe
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v27
+
+      - name: Build daemon for ${{ matrix.target.name }}
+        run: nix build .#clankers-daemon-${{ matrix.target.name }}
+
+      - name: Prepare artifact
+        run: |
+          mkdir -p artifacts/${{ matrix.target.name }}
+          cp result/bin/${{ matrix.target.artifact }} artifacts/${{ matrix.target.name }}/
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: daemon-${{ matrix.target.name }}
+          path: artifacts/${{ matrix.target.name }}/
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Determine tag
+        id: tag
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "tag=${{ inputs.tag }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=${{ github.ref_name }}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          pattern: daemon-*
+
+      - name: Prepare release assets
+        run: |
+          mkdir -p release
+          
+          for dir in artifacts/daemon-*/; do
+            target=$(basename "$dir" | sed 's/daemon-//')
+            
+            # Find the binary (handles both with and without .exe)
+            binary=$(find "$dir" -type f -name "clankers-daemon*" | head -1)
+            filename=$(basename "$binary")
+            
+            # Copy with target prefix for clarity
+            cp "$binary" "release/${target}-${filename}"
+          done
+          
+          # Generate checksums
+          cd release
+          sha256sum * > checksums.txt
+          
+          echo "Release assets:"
+          ls -la
+          echo ""
+          echo "Checksums:"
+          cat checksums.txt
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag.outputs.tag }}
+          name: ${{ steps.tag.outputs.tag }}
+          files: release/*
+          fail_on_unmatched_files: true
+          body: |
+            ## Daemon Binaries
+            
+            Download the appropriate binary for your platform:
+            
+            | Platform | Architecture | File |
+            |----------|--------------|------|
+            | Linux | x86_64 | `linux-amd64-clankers-daemon` |
+            | Linux | ARM64 | `linux-arm64-clankers-daemon` |
+            | macOS | x86_64 | `darwin-amd64-clankers-daemon` |
+            | macOS | ARM64 (Apple Silicon) | `darwin-arm64-clankers-daemon` |
+            | Windows | x86_64 | `windows-amd64-clankers-daemon.exe` |
+            
+            Verify downloads with `checksums.txt` (SHA256).

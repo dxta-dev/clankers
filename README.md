@@ -24,12 +24,45 @@ project-level `opencode.json`):
 Install the package (npm or Bun). The clankers-daemon creates and migrates the
 local database on startup.
 
+## Installing the Daemon
+
+The plugin requires the `clankers-daemon` binary. Install it with:
+
+```bash
+# Linux/macOS
+curl -fsSL https://raw.githubusercontent.com/dxta-dev/clankers/main/scripts/install-daemon.sh | sh
+
+# Windows (PowerShell)
+irm https://raw.githubusercontent.com/dxta-dev/clankers/main/scripts/install-daemon.ps1 | iex
+```
+
+Options:
+
+```bash
+# Install specific version
+curl -fsSL ... | sh -s -- v0.1.0
+
+# Or use environment variables
+CLANKERS_VERSION=v0.1.0 curl -fsSL ... | sh
+CLANKERS_INSTALL_DIR=/usr/local/bin curl -fsSL ... | sh
+```
+
+The script downloads the binary from GitHub Releases, verifies the checksum, and
+installs to `~/.local/bin` (Linux/macOS) or `%LOCALAPPDATA%\clankers\bin` (Windows).
+
+Alternatively, if you use Nix:
+
+```bash
+nix profile install github:dxta-dev/clankers#clankers-daemon
+```
+
 ## Quick start
 
-1. Add the plugin to your OpenCode config (or drop a built plugin into
+1. Install the daemon (see above).
+2. Add the plugin to your OpenCode config (or drop a built plugin into
    `.opencode/plugins/`).
-2. Start `clankers-daemon` so it can create the database.
-3. Restart OpenCode so the plugin loads with local SQLite sync enabled.
+3. Start `clankers-daemon` so it can create the database.
+4. Restart OpenCode so the plugin loads with local SQLite sync enabled.
 
 ## Configuration
 
