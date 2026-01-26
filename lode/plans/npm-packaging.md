@@ -4,15 +4,33 @@ Goal: publish OpenCode plugin to npm while ensuring the Go daemon is installed
 automatically on macOS, Linux, and Windows, with the database initialized on
 postinstall. Nix builds remain the source of truth for reproducible binaries.
 
-Invariants
+## Status
+
+Phase 1 complete: Cross-compilation targets added to flake.nix.
+
+## Invariants
+
 - Nix builds the daemon binaries for each supported OS/arch.
 - npm packages remain TypeScript-source releases (no prebuild bundling).
 - Postinstall never requires Nix on the user machine.
 - The daemon owns DB creation/migrations; plugins only call `ensureDb`.
 - Installer must support macOS, Linux, and Windows.
 
-Plan
-1. Build daemon binaries via Nix in CI for each target platform/arch.
+## Available Build Targets
+
+| Nix Package | Platform | Architecture |
+|-------------|----------|--------------|
+| `clankers-daemon-linux-amd64` | Linux | x86_64 |
+| `clankers-daemon-linux-arm64` | Linux | ARM64 |
+| `clankers-daemon-darwin-amd64` | macOS | x86_64 |
+| `clankers-daemon-darwin-arm64` | macOS | ARM64 (Apple Silicon) |
+| `clankers-daemon-windows-amd64` | Windows | x86_64 |
+
+All targets can be built from any host system (cross-compilation via Go).
+
+## Plan
+
+1. ~~Build daemon binaries via Nix in CI for each target platform/arch.~~ DONE
 2. Publish binaries + checksums as release artifacts (GitHub Release or a
    dedicated npm package).
 3. Add a `postinstall` script in the OpenCode plugin that:
@@ -24,9 +42,10 @@ Plan
    - Else use the installed binary path from postinstall.
 5. Update release workflow to publish npm and upload daemon artifacts together.
 
-Target matrix
+## Target Matrix
+
 - macOS: amd64, arm64
-- Linux: amd64
+- Linux: amd64, arm64
 - Windows: amd64 (exe)
 
 Postinstall behavior (documented)

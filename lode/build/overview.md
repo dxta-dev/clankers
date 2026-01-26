@@ -11,14 +11,23 @@ for workspace management, while the Go daemon builds with `buildGoModule`.
 
 | Package | Description |
 |---------|-------------|
-| `clankers-daemon` | Go binary (SQLite + JSON-RPC server) |
+| `clankers-daemon` | Go binary for current system |
+| `clankers-daemon-linux-amd64` | Cross-compiled for Linux x86_64 |
+| `clankers-daemon-linux-arm64` | Cross-compiled for Linux ARM64 |
+| `clankers-daemon-darwin-amd64` | Cross-compiled for macOS x86_64 |
+| `clankers-daemon-darwin-arm64` | Cross-compiled for macOS ARM64 |
+| `clankers-daemon-windows-amd64` | Cross-compiled for Windows x86_64 |
 | `clankers-opencode` | OpenCode editor plugin |
 | `clankers-cursor` | Cursor editor plugin |
 | `clankers-claude-code` | Claude Code plugin |
 
 ```bash
-# Build daemon
+# Build daemon for current system
 nix build .#clankers-daemon
+
+# Build daemon for specific platform (cross-compilation)
+nix build .#clankers-daemon-darwin-arm64
+nix build .#clankers-daemon-windows-amd64
 
 # Build TypeScript app
 nix build .#clankers-opencode
@@ -53,16 +62,38 @@ Dependencies:
 - `modernc.org/sqlite` - Pure Go SQLite (no CGO)
 - `github.com/sourcegraph/jsonrpc2` - JSON-RPC server
 
-Nix builds with `CGO_ENABLED=0` for static binary.
+Nix builds with size optimizations for static binaries:
+- `CGO_ENABLED=0` - Pure Go, no C dependencies
+- `-ldflags="-s -w"` - Strip debug symbols and DWARF info
+- `-trimpath` - Remove file paths for reproducibility
 
 ```nix
 clankers-daemon = pkgs.buildGoModule {
   pname = "clankers-daemon";
   src = ./packages/daemon;
-  vendorHash = "sha256-L8CHwPOjwE+DOJ1OWi0/V+tYrB2ev3iN9VU7i8WmCN0=";
+  vendorHash = "sha256-...";
+  ldflags = [ "-s" "-w" ];
+  flags = [ "-trimpath" ];
   env.CGO_ENABLED = 0;
 };
 ```
+
+### Cross-Compilation
+
+Cross-compiled binaries use a `mkDaemonCross` helper that sets `GOOS`/`GOARCH`
+environment variables during the build phase. Since the daemon uses pure Go
+(no CGO), cross-compilation works from any host system.
+
+| Target | Binary Name | Format |
+|--------|-------------|--------|
+| linux-amd64 | `clankers-daemon` | ELF 64-bit x86_64 |
+| linux-arm64 | `clankers-daemon` | ELF 64-bit ARM64 |
+| darwin-amd64 | `clankers-daemon` | Mach-O 64-bit x86_64 |
+| darwin-arm64 | `clankers-daemon` | Mach-O 64-bit arm64 |
+| windows-amd64 | `clankers-daemon.exe` | PE32+ x86_64 |
+
+Cross-compiled builds disable `strip` and `patchELF` fixup phases since these
+tools don't understand foreign binary formats.
 
 ## TypeScript Apps
 
@@ -95,6 +126,11 @@ flowchart TB
   
   subgraph Packages
     Daemon[clankers-daemon]
+    subgraph Cross[Cross-compiled daemons]
+      Linux[linux-amd64/arm64]
+      Darwin[darwin-amd64/arm64]
+      Windows[windows-amd64]
+    end
     OpenCode[clankers-opencode]
     Cursor[clankers-cursor]
     Claude[clankers-claude-code]

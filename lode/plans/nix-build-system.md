@@ -211,6 +211,13 @@ Benefits:
 - Test file: `tests/integration.ts` with relative import to core RPC client
 - Updated pnpmDeps hash to include tsx
 
+### Phase 5: Cross-Compilation ✓
+- Added `mkDaemonCross` helper for cross-compiled daemon packages
+- Targets: linux-amd64, linux-arm64, darwin-amd64, darwin-arm64, windows-amd64
+- Uses `GOOS`/`GOARCH` environment variables in preBuild phase
+- Disables strip/patchELF fixup phases for foreign binaries
+- Handles Go's `GOOS_GOARCH` subdirectory output and Windows `.exe` suffix
+
 ## File Changes
 
 | File | Change |
@@ -226,8 +233,12 @@ Benefits:
 ## Commands
 
 ```bash
-# Build daemon
+# Build daemon for current system
 nix build .#clankers-daemon
+
+# Build cross-compiled daemon
+nix build .#clankers-daemon-darwin-arm64
+nix build .#clankers-daemon-windows-amd64
 
 # Build TypeScript app
 nix build .#clankers-opencode

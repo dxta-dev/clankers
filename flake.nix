@@ -15,6 +15,40 @@
         "aarch64-darwin"
       ];
       forAllSystems = nixpkgs.lib.genAttrs supportedSystems;
+
+      # Cross-compilation targets for daemon releases
+      daemonTargets = [
+        {
+          name = "linux-amd64";
+          GOOS = "linux";
+          GOARCH = "amd64";
+          suffix = "";
+        }
+        {
+          name = "linux-arm64";
+          GOOS = "linux";
+          GOARCH = "arm64";
+          suffix = "";
+        }
+        {
+          name = "darwin-amd64";
+          GOOS = "darwin";
+          GOARCH = "amd64";
+          suffix = "";
+        }
+        {
+          name = "darwin-arm64";
+          GOOS = "darwin";
+          GOARCH = "arm64";
+          suffix = "";
+        }
+        {
+          name = "windows-amd64";
+          GOOS = "windows";
+          GOARCH = "amd64";
+          suffix = ".exe";
+        }
+      ];
     in
     {
       packages = forAllSystems (
@@ -70,16 +104,93 @@
                 description = "Clankers plugin for ${pname}";
               };
             };
+
+          # Helper to build daemon for a specific target (cross-compilation)
+          # buildGoModule uses GOOS/GOARCH from env, but we need to set them
+          # via preBuild to ensure they're used during the build phase
+          mkDaemonCross =
+            {
+              name,
+              GOOS,
+              GOARCH,
+              suffix,
+            }:
+            pkgs.buildGoModule {
+              pname = "clankers-daemon-${name}";
+              version = "0.1.0";
+              src = ./packages/daemon;
+              vendorHash = "sha256-L8CHwPOjwE+DOJ1OWi0/V+tYrB2ev3iN9VU7i8WmCN0=";
+
+              # Strip debug symbols and DWARF info to reduce binary size
+              ldflags = [
+                "-s"
+                "-w"
+              ];
+
+              # Remove file paths from binary for reproducibility
+              flags = [ "-trimpath" ];
+
+              # Disable fixup phases that don't work on cross-compiled binaries
+              dontStrip = true;
+              dontPatchELF = true;
+              dontFixup = true;
+
+              # Set cross-compilation environment
+              preBuild = ''
+                export GOOS=${GOOS}
+                export GOARCH=${GOARCH}
+                export CGO_ENABLED=0
+              '';
+
+              # Move binary from GOOS_GOARCH subdir to bin/ and handle Windows .exe
+              postInstall =
+                let
+                  # Windows builds produce .exe in the subdir
+                  srcBinary = if GOOS == "windows" then "clankers-daemon.exe" else "clankers-daemon";
+                  dstBinary = "clankers-daemon${suffix}";
+                in
+                ''
+                  if [ -d "$out/bin/${GOOS}_${GOARCH}" ]; then
+                    mv "$out/bin/${GOOS}_${GOARCH}/${srcBinary}" "$out/bin/${dstBinary}"
+                    rmdir "$out/bin/${GOOS}_${GOARCH}"
+                  elif [ -f "$out/bin/clankers-daemon" ] && [ "${suffix}" != "" ]; then
+                    mv "$out/bin/clankers-daemon" "$out/bin/${dstBinary}"
+                  fi
+                '';
+
+              meta = {
+                description = "Clankers daemon for ${name}";
+                mainProgram = "clankers-daemon${suffix}";
+              };
+            };
+
+          # Generate cross-compiled daemon packages
+          daemonCrossPackages = builtins.listToAttrs (
+            map (target: {
+              name = "clankers-daemon-${target.name}";
+              value = mkDaemonCross target;
+            }) daemonTargets
+          );
         in
-        {
+        daemonCrossPackages
+        // {
           clankers-daemon = pkgs.buildGoModule {
             pname = "clankers-daemon";
             version = "0.1.0";
             src = ./packages/daemon;
             vendorHash = "sha256-L8CHwPOjwE+DOJ1OWi0/V+tYrB2ev3iN9VU7i8WmCN0=";
 
+            # Strip debug symbols and DWARF info to reduce binary size
+            ldflags = [
+              "-s"
+              "-w"
+            ];
+
+            # Remove file paths from binary for reproducibility
+            flags = [ "-trimpath" ];
+
             env = {
-              CGO_ENABLED = 0;
+              CGO_ENABLED = "0";
             };
 
             meta = {
