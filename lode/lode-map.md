@@ -21,7 +21,6 @@
   - [build/testing](build/testing.md)
 - plans/
   - [plans/plan](plans/plan.md)
-  - [plans/libsql-local](plans/libsql-local.md)
   - [plans/go-daemon-migration](plans/go-daemon-migration.md)
   - [plans/nix-build-system](plans/nix-build-system.md)
   - [plans/modernc-sqlite](plans/modernc-sqlite.md)

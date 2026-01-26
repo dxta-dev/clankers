@@ -202,7 +202,7 @@ Benefits:
 - Added `checks.lint` using Biome directly (no pnpm deps needed)
 - Added `checks.typecheck` using pnpmDeps + `pnpm check`
 - Replaced CI workflow with Nix-based approach
-- TODO: Add Cachix integration for faster CI builds
+
 
 ### Phase 4: Integration Testing ✓
 - Added `checks.integration` that starts daemon with isolated socket/db

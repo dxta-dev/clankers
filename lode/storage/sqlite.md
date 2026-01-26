@@ -7,7 +7,7 @@ Invariants
 - WAL mode and foreign key enforcement are enabled on every open.
 - `messages.session_id` references `sessions.id` with cascade delete.
 - The daemon handles creation and migrations on startup.
-- Plugins call the daemon over JSON-RPC; no `@libsql/client` in plugin code.
+- Plugins call the daemon over JSON-RPC.
 
 Schema
 ```sql

@@ -6,7 +6,7 @@ Invariants
 - The daemon resolves paths using the same rules as the JS implementation (see `storage/paths.md`).
 - The daemon creates the database and runs migrations on startup via `ensureDb`.
 - Plugins validate payloads with Zod, aggregate message parts, then call the daemon over RPC.
-- All SQLite writes go through the daemon; plugins no longer import `@libsql/client`.
+- All SQLite writes go through the daemon.
 - The daemon enables WAL mode and foreign key enforcement on every database open.
 
 Socket location
