@@ -64,7 +64,7 @@ pnpmDeps = pkgs.fetchPnpmDeps {
   pname = "clankers-workspace";
   version = "0.1.0";
   src = ./.;
-  hash = "sha256-s5ST8VDMv9nO//7xYY8ejIw4+dm5i6IrLCr0i2FrM00=";
+  hash = "sha256-szJy9JkSlOYT7aCa3mfrXajbHDWpTZcQkzQdj7eiW8Q=";
   fetcherVersion = 3;
 };
 
@@ -125,23 +125,35 @@ checks.typecheck = pkgs.runCommand "typecheck" {
 '';
 ```
 
-### Integration Test (Future)
+### Integration Test
+
+Starts daemon in isolated environment, runs health check and full round-trip test
+(upsertSession + upsertMessage), then cleans up.
 
 ```nix
-checks.integration = pkgs.runCommand "integration" {
-  nativeBuildInputs = [ clankers-daemon nodejs_24 ];
-} ''
-  # Start daemon
-  clankers-daemon &
-  DAEMON_PID=$!
+checks.integration = pkgs.stdenvNoCC.mkDerivation {
+  name = "clankers-integration";
+  nativeBuildInputs = [ pkgs.nodejs_24 pkgs.pnpm pkgs.pnpmConfigHook daemon ];
+  inherit pnpmDeps;
   
-  # Run RPC health check
-  node -e "const rpc = ...; await rpc.health();"
-  
-  kill $DAEMON_PID
-  touch $out
-'';
+  buildPhase = ''
+    TEST_DIR=$(mktemp -d)
+    export CLANKERS_SOCKET_PATH="$TEST_DIR/clankers.sock"
+    export CLANKERS_DB_PATH="$TEST_DIR/clankers.db"
+    
+    clankers-daemon &
+    DAEMON_PID=$!
+    # wait for socket...
+    
+    pnpm exec tsx tests/integration.ts
+    
+    kill $DAEMON_PID
+  '';
+};
 ```
+
+Test file: `tests/integration.ts` - validates health, ensureDb, and round-trip
+session/message creation using the existing RPC client.
 
 ## CI Migration
 
@@ -180,7 +192,7 @@ Benefits:
 
 ### Phase 2: TypeScript Packages ✓
 - Added `fetchPnpmDeps` with `fetcherVersion = 3`
-- Calculated `pnpmDeps` hash: `sha256-s5ST8VDMv9nO//7xYY8ejIw4+dm5i6IrLCr0i2FrM00=`
+- Calculated `pnpmDeps` hash: `sha256-szJy9JkSlOYT7aCa3mfrXajbHDWpTZcQkzQdj7eiW8Q=`
 - Added `mkTsApp` helper for consistent derivations
 - Added derivations for all three apps: opencode, cursor, claude-code
 - Uses `pnpmConfigHook` for reproducible node_modules
@@ -192,9 +204,12 @@ Benefits:
 - Replaced CI workflow with Nix-based approach
 - TODO: Add Cachix integration for faster CI builds
 
-### Phase 4: Integration Testing
-- Add check that starts daemon and validates RPC
-- Ensure daemon binary is available in test environment
+### Phase 4: Integration Testing ✓
+- Added `checks.integration` that starts daemon with isolated socket/db
+- Test validates: health check, ensureDb, upsertSession, upsertMessage
+- Uses `tsx` to run TypeScript test directly (added as dev dependency)
+- Test file: `tests/integration.ts` with relative import to core RPC client
+- Updated pnpmDeps hash to include tsx
 
 ## File Changes
 
@@ -204,6 +219,9 @@ Benefits:
 | `.github/workflows/ci.yml` | Replace setup-node with nix |
 | `lode/dev-environment.md` | Update with build commands |
 | `lode/ci/overview.md` | Document nix-based CI |
+| `tests/integration.ts` | Integration test script |
+| `tests/run-integration.sh` | Local test runner |
+| `package.json` | Added tsx dev dependency |
 
 ## Commands
 

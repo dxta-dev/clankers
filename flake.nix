@@ -27,7 +27,7 @@
             pname = "clankers-workspace";
             version = "0.1.0";
             src = ./.;
-            hash = "sha256-s5ST8VDMv9nO//7xYY8ejIw4+dm5i6IrLCr0i2FrM00=";
+            hash = "sha256-szJy9JkSlOYT7aCa3mfrXajbHDWpTZcQkzQdj7eiW8Q=";
             fetcherVersion = 3;
           };
 
@@ -120,9 +120,11 @@
             pname = "clankers-workspace";
             version = "0.1.0";
             src = ./.;
-            hash = "sha256-s5ST8VDMv9nO//7xYY8ejIw4+dm5i6IrLCr0i2FrM00=";
+            hash = "sha256-szJy9JkSlOYT7aCa3mfrXajbHDWpTZcQkzQdj7eiW8Q=";
             fetcherVersion = 3;
           };
+
+          daemon = self.packages.${system}.clankers-daemon;
         in
         {
           lint = pkgs.stdenvNoCC.mkDerivation {
@@ -154,6 +156,66 @@
 
             buildPhase = ''
               pnpm check
+            '';
+
+            installPhase = ''
+              touch $out
+            '';
+          };
+
+          integration = pkgs.stdenvNoCC.mkDerivation {
+            name = "clankers-integration";
+            src = ./.;
+
+            nativeBuildInputs = [
+              pkgs.nodejs_24
+              pkgs.pnpm
+              pkgs.pnpmConfigHook
+              daemon
+            ];
+
+            inherit pnpmDeps;
+
+            buildPhase = ''
+              # Create isolated test directory
+              TEST_DIR=$(mktemp -d)
+              export CLANKERS_SOCKET_PATH="$TEST_DIR/clankers.sock"
+              export CLANKERS_DB_PATH="$TEST_DIR/clankers.db"
+
+              cleanup() {
+                echo "Cleaning up..."
+                if [ -n "''${DAEMON_PID:-}" ]; then
+                  kill "$DAEMON_PID" 2>/dev/null || true
+                  wait "$DAEMON_PID" 2>/dev/null || true
+                fi
+                rm -rf "$TEST_DIR"
+              }
+              trap cleanup EXIT
+
+              echo "Starting daemon..."
+              echo "  Socket: $CLANKERS_SOCKET_PATH"
+              echo "  DB: $CLANKERS_DB_PATH"
+
+              clankers-daemon &
+              DAEMON_PID=$!
+
+              # Wait for socket to be ready
+              for i in $(seq 1 30); do
+                if [ -S "$CLANKERS_SOCKET_PATH" ]; then
+                  echo "Daemon ready after $i attempts"
+                  break
+                fi
+                sleep 0.1
+              done
+
+              if [ ! -S "$CLANKERS_SOCKET_PATH" ]; then
+                echo "ERROR: Daemon failed to start (socket not found)"
+                exit 1
+              fi
+
+              echo ""
+              echo "Running integration tests..."
+              pnpm exec tsx tests/integration.ts
             '';
 
             installPhase = ''
