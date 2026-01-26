@@ -8,8 +8,8 @@ Invariants
 - Windows uses `%APPDATA%` (Roaming) as the data root.
 - `CLANKERS_DATA_PATH` overrides the data root for both DB and config.
 - `CLANKERS_DB_PATH` overrides only the database file path.
-- Config is stored as `config.json` alongside `clankers.db`.
-- The daemon creates `config.json` if it does not exist.
+- Config is stored as `clankers.json` alongside `clankers.db`.
+- The config file may be absent until a component writes it.
 
 Links: [summary](../summary.md), [sqlite](sqlite.md), [daemon](../daemon/architecture.md)
 
@@ -25,5 +25,5 @@ Diagram
 flowchart LR
   Env[Env overrides] --> Root[Data root]
   Root --> Db[clankers.db]
-  Root --> Config[config.json]
+  Root --> Config[clankers.json]
 ```

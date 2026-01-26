@@ -42,9 +42,7 @@ directory:
 
 Defaults
 - Database: `<data root>/clankers.db`
-- Config: `<data root>/config.json`
-
-The daemon creates an empty `config.json` if it is missing.
+- Config: `<data root>/clankers.json`
 
 Overrides
 - Set `CLANKERS_DATA_PATH` to change the app data root.

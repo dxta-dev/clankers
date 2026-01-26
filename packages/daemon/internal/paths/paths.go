@@ -9,7 +9,7 @@ import (
 const (
 	dataDirName       = "clankers"
 	defaultDBFile     = "clankers.db"
-	defaultConfigFile = "config.json"
+	defaultConfigFile = "clankers.json"
 	defaultSocketName = "dxta-clankers.sock"
 )
 

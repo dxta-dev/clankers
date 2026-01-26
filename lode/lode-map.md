@@ -4,6 +4,8 @@
 - [terminology](terminology.md)
 - [practices](practices.md)
 - [dev-environment](dev-environment.md)
+- config/
+  - [config/overview](config/overview.md)
 - data-model/
   - [data-model/schemas](data-model/schemas.md)
 - opencode/
@@ -24,6 +26,7 @@
   - [plans/go-daemon-migration](plans/go-daemon-migration.md)
   - [plans/nix-build-system](plans/nix-build-system.md)
   - [plans/modernc-sqlite](plans/modernc-sqlite.md)
+  - [plans/npm-packaging](plans/npm-packaging.md)
 - release/
   - [release/npm-release](release/npm-release.md)
 - ci/
