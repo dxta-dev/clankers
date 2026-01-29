@@ -56,6 +56,49 @@ Alternatively, if you use Nix:
 nix profile install github:dxta-dev/clankers#clankers-daemon
 ```
 
+### NixOS Installation
+
+The flake provides multiple integration options:
+
+**NixOS System Service** (system-wide daemon):
+```nix
+{
+  inputs.clankers.url = "github:dxta-dev/clankers";
+
+  outputs = { self, nixpkgs, clankers }: {
+    nixosConfigurations.myhost = nixpkgs.lib.nixosSystem {
+      system = "x86_64-linux";
+      modules = [
+        clankers.nixosModules.default
+        {
+          services.clankers-daemon = {
+            enable = true;
+            logLevel = "info";
+            dataRoot = "/var/lib/clankers";
+          };
+        }
+      ];
+    };
+  };
+}
+```
+
+**Dev Shell with Auto-Start** (for active development):
+```bash
+# From the clankers repo - daemon auto-starts on shell enter, stops on exit
+nix develop .#with-daemon
+
+# Or manual control
+nix develop
+clankers-daemon &
+```
+
+**Flake Overlay** (adds `pkgs.clankers-daemon` to your nixpkgs):
+```nix
+nixpkgs.overlays = [ clankers.overlays.default ];
+# Now pkgs.clankers-daemon is available everywhere
+```
+
 ## Quick start
 
 1. Install the daemon (see above).
@@ -90,8 +133,22 @@ This repo is a pnpm monorepo with:
 - `apps/claude-code-plugin` (published as `@dxta-dev/clankers-claude-code`)
 - `packages/core`
 
-`pnpm build:opencode` bundles with esbuild (Node 24) and writes the plugin to
-`apps/opencode-plugin/dist/` for local OpenCode usage.
+### With Nix (Recommended)
+
+The flake provides a complete dev environment with Node, pnpm, Go, and the daemon:
+
+```bash
+# Standard dev shell - manual daemon control
+nix develop
+
+# Dev shell with auto-started daemon
+nix develop .#with-daemon
+
+# Run checks
+nix flake check
+```
+
+### Without Nix
 
 ```sh
 pnpm install
@@ -99,3 +156,6 @@ pnpm build:opencode
 pnpm lint
 pnpm format
 ```
+
+`pnpm build:opencode` bundles with esbuild (Node 24) and writes the plugin to
+`apps/opencode-plugin/dist/` for local OpenCode usage.

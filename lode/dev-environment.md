@@ -5,9 +5,59 @@ Nix flake provides a reproducible dev shell with all required tooling.
 ## Entry
 
 ```bash
-nix develop          # enter shell
-direnv allow         # or use direnv with .envrc
+nix develop                    # enter shell (manual daemon)
+nix develop .#with-daemon      # enter shell with auto-started daemon
+nix develop .#with-plugin      # enter shell with plugin built and ready
+ direnv allow                   # or use direnv with .envrc
 ```
+
+## Dev Shell Variants
+
+| Shell | Description |
+|-------|-------------|
+| `default` | Manual daemon control |
+| `with-daemon` | Auto-starts daemon on shell entry |
+| `with-plugin` | Builds plugin, copies to `.opencode/plugins/`, creates config |
+
+### with-plugin (Recommended for OpenCode Development)
+
+The `with-plugin` shell automates the Method 2 setup (project-level plugin development):
+
+```bash
+nix develop .#with-plugin
+```
+
+On entry, it automatically:
+1. Creates `.opencode/plugins/` directory
+2. Builds the OpenCode plugin (`pnpm build:opencode`)
+3. Copies the built plugin to `.opencode/plugins/clankers.js`
+4. Creates `.opencode/config.json` if it doesn't exist
+5. Sets up environment variables for the daemon
+
+After entering, restart OpenCode in this directory to load the local plugin.
+
+**Requirements:** Run `pnpm install` first if dependencies aren't installed.
+
+## Path Configuration (Nix Shell)
+
+**Important:** Dev shells use `$PWD` in `shellHook` to set paths. Do NOT use `${builtins.toString ./.}` as it resolves to the Nix store when the git tree is dirty, causing read-only filesystem errors.
+
+```nix
+# Correct - uses shellHook with $PWD
+shellHook = ''
+  export CLANKERS_DATA_PATH="$PWD/.clankers-dev"
+  export CLANKERS_SOCKET_PATH="$PWD/.clankers-dev/dxta-clankers.sock"
+  export CLANKERS_DB_PATH="$PWD/.clankers-dev/clankers.db"
+'';
+
+# Wrong - resolves to /nix/store/... when dirty
+CLANKERS_DATA_PATH = "${builtins.toString ./.}/.clankers-dev";
+```
+
+The shell exports these environment variables:
+- `CLANKERS_DATA_PATH` - Data directory (default: `$PWD/.clankers-dev`)
+- `CLANKERS_SOCKET_PATH` - Unix socket path
+- `CLANKERS_DB_PATH` - SQLite database path
 
 ## Included Tools
 
@@ -74,8 +124,13 @@ Diagram
 ```mermaid
 flowchart LR
   Flake[flake.nix] --> Shell[nix develop]
+  Flake --> WithDaemon[nix develop .#with-daemon]
+  Flake --> WithPlugin[nix develop .#with-plugin]
   Shell --> Node[Node.js 24]
   Shell --> Go[Go 1.25]
   Shell --> SQLite[SQLite]
   Shell --> Biome[Biome]
+  WithPlugin --> Build[pnpm build:opencode]
+  Build --> Copy[copy to .opencode/plugins/]
+  Copy --> Config[create config.json]
 ```

@@ -3,3 +3,6 @@
 node_modules/
 bun.lockb
 result*
+
+.clankers-dev/
+.opencode/plugins/clankers.js
