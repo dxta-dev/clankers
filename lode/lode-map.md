@@ -25,6 +25,10 @@
 - plans/
   - [plans/npm-packaging](plans/npm-packaging.md)
   - [plans/fix-session-creation](plans/fix-session-creation.md)
+  - [plans/claude-plugin](plans/claude-plugin.md)
+- claude/
+  - [claude/plugin-plan](plans/claude-plugin.md)
+  - [claude/plugin-system](claude/plugin-system.md)
 - release/
   - [release/npm-release](release/npm-release.md)
   - [release/daemon-release](release/daemon-release.md)
