@@ -8,6 +8,7 @@ Invariants
 - Plugins validate payloads with Zod, aggregate message parts, then call the daemon over RPC.
 - All SQLite writes go through the daemon.
 - The daemon enables WAL mode and foreign key enforcement on every database open.
+- Benign connection errors ("connection reset by peer", "broken pipe") are filtered from logs to prevent UI noise in OpenCode.
 
 Socket location
 - Linux/macOS: `$CLANKERS_DATA_PATH/clankers/dxta-clankers.sock` or `~/.local/share/clankers/dxta-clankers.sock`
@@ -39,6 +40,12 @@ import { createRpcClient } from "@dxta-dev/clankers-core";
 const rpc = createRpcClient({ clientName: "opencode-plugin", clientVersion: "0.1.0" });
 await rpc.upsertSession({ id: "session-123", title: "My Session" });
 ```
+
+Connection pattern
+- The TypeScript RPC client (`packages/core/src/rpc-client.ts`) creates a new socket connection for each RPC call.
+- After receiving and parsing the response, the client immediately closes the connection (`socket.end()`).
+- This triggers a "connection reset by peer" error in the Go jsonrpc2 library's read loop, which is benign but logged by default.
+- The daemon uses a `filteredLogWriter` to suppress these expected errors before they reach stderr (and OpenCode's UI).
 
 Diagram
 ```mermaid

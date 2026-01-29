@@ -4,11 +4,13 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"io"
 	"log"
 	"net"
 	"os"
 	"os/signal"
 	"runtime"
+	"strings"
 	"syscall"
 
 	"github.com/dxta-dev/clankers-daemon/internal/paths"
@@ -17,7 +19,30 @@ import (
 	"github.com/sourcegraph/jsonrpc2"
 )
 
+// filteredLogWriter wraps an io.Writer and suppresses benign jsonrpc2
+// protocol errors that occur when clients close connections after receiving
+// responses. This prevents noise in OpenCode's UI.
+type filteredLogWriter struct {
+	w io.Writer
+}
+
+func (f *filteredLogWriter) Write(p []byte) (n int, err error) {
+	s := string(p)
+	// Suppress common benign connection errors from jsonrpc2 library
+	if strings.Contains(s, "connection reset by peer") ||
+		strings.Contains(s, "broken pipe") ||
+		strings.Contains(s, "use of closed network connection") {
+		return len(p), nil
+	}
+	return f.w.Write(p)
+}
+
 func main() {
+	// Filter out benign jsonrpc2 connection errors from logs to prevent
+	// noise in OpenCode's UI. These errors occur when clients close connections
+	// after receiving responses, which is expected behavior.
+	log.SetOutput(&filteredLogWriter{w: os.Stderr})
+
 	var (
 		socketPath string
 		dataRoot   string
