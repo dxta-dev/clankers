@@ -16,9 +16,12 @@ operational guide for agentic coding work.
 - Release workflow publishes TypeScript sources without a build step.
 
 ### Running a Single Test
-- There is no test runner configured in this repo (TypeScript or Go).
+- There is no unit test runner configured (TypeScript or Go).
 - No `*_test.go` files are present.
-- If you add tests, add a script and document a single-test command here.
+- Integration test exists at `tests/integration.ts` - run with:
+  - `bash tests/run-integration.sh` (starts daemon and runs tests)
+  - Or manually: `pnpm exec tsx tests/integration.ts` (requires `CLANKERS_SOCKET_PATH` env var)
+- If you add unit tests, add a script and document a single-test command here.
 
 ## Cursor/Copilot Rules
 - No `.cursor/rules/`, `.cursorrules`, or `.github/copilot-instructions.md` files found.
