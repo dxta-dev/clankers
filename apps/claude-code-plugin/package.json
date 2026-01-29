@@ -13,6 +13,7 @@
 		"build": "pnpm exec esbuild ./src/index.ts --bundle --outfile=dist/index.js --platform=node --format=esm --target=node24"
 	},
 	"dependencies": {
-		"@dxta-dev/clankers-core": "workspace:*"
+		"@dxta-dev/clankers-core": "workspace:*",
+		"zod": "^3.25.72"
 	}
 }

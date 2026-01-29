@@ -1,0 +1,8 @@
+{
+	"name": "clankers",
+	"description": "Sync Claude Code sessions to clankers-daemon for analytics",
+	"version": "0.1.0",
+	"author": {
+		"name": "dxta-dev"
+	}
+}
