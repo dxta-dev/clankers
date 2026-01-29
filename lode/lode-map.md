@@ -24,6 +24,7 @@
   - [build/testing](build/testing.md)
 - plans/
   - [plans/npm-packaging](plans/npm-packaging.md)
+  - [plans/fix-session-creation](plans/fix-session-creation.md)
 - release/
   - [release/npm-release](release/npm-release.md)
   - [release/daemon-release](release/daemon-release.md)
