@@ -48,12 +48,12 @@ function Write-ErrorLog {
 
 function Get-LatestVersion {
     $url = "https://api.github.com/repos/$Repo/releases/latest"
-    
+
     $headers = @{}
     if ($env:GITHUB_TOKEN) {
         $headers["Authorization"] = "Bearer $env:GITHUB_TOKEN"
     }
-    
+
     try {
         $response = Invoke-RestMethod -Uri $url -Headers $headers
         return $response.tag_name
@@ -65,7 +65,7 @@ function Get-LatestVersion {
 
 function Get-FileChecksum {
     param([string]$FilePath)
-    
+
     $hash = Get-FileHash -Path $FilePath -Algorithm SHA256
     return $hash.Hash.ToLower()
 }
@@ -74,11 +74,11 @@ function Get-TargetInstallDir {
     if ($InstallDir) {
         return $InstallDir
     }
-    
+
     if ($env:CLANKERS_INSTALL_DIR) {
         return $env:CLANKERS_INSTALL_DIR
     }
-    
+
     return Join-Path $env:LOCALAPPDATA "clankers\bin"
 }
 
@@ -86,24 +86,24 @@ function Get-TargetVersion {
     if ($Version) {
         return $Version
     }
-    
+
     if ($env:CLANKERS_VERSION) {
         return $env:CLANKERS_VERSION
     }
-    
+
     return $null
 }
 
 function Test-InPath {
     param([string]$Directory)
-    
+
     $paths = $env:PATH -split ";"
     return $paths -contains $Directory
 }
 
 function Add-ToUserPath {
     param([string]$Directory)
-    
+
     $currentPath = [Environment]::GetEnvironmentVariable("PATH", "User")
     if ($currentPath -notlike "*$Directory*") {
         $newPath = "$Directory;$currentPath"
@@ -115,7 +115,7 @@ function Add-ToUserPath {
 
 function Main {
     Write-Log "Detected platform: $Target"
-    
+
     # Get version
     $targetVersion = Get-TargetVersion
     if (-not $targetVersion) {
@@ -125,33 +125,33 @@ function Main {
             Write-ErrorLog "Could not determine latest version. Set `$env:CLANKERS_VERSION = 'v0.1.0'"
         }
     }
-    
+
     Write-Log "Installing version: $targetVersion"
-    
+
     # Determine filenames
     $artifact = "$Target-$BinaryName.exe"
     $destName = "$BinaryName.exe"
-    
+
     # URLs
     $baseUrl = "https://github.com/$Repo/releases/download/$targetVersion"
     $binaryUrl = "$baseUrl/$artifact"
     $checksumsUrl = "$baseUrl/checksums.txt"
-    
+
     # Create temp directory
     $tmpDir = Join-Path $env:TEMP "clankers-install-$(Get-Random)"
     New-Item -ItemType Directory -Path $tmpDir -Force | Out-Null
-    
+
     try {
         # Download binary
         $binaryPath = Join-Path $tmpDir $artifact
         Write-Log "Downloading $binaryUrl"
         Invoke-WebRequest -Uri $binaryUrl -OutFile $binaryPath -UseBasicParsing
-        
+
         # Download checksums
         $checksumsPath = Join-Path $tmpDir "checksums.txt"
         Write-Log "Downloading checksums..."
         Invoke-WebRequest -Uri $checksumsUrl -OutFile $checksumsPath -UseBasicParsing
-        
+
         # Extract expected checksum
         $checksumLines = Get-Content $checksumsPath
         $expectedLine = $checksumLines | Where-Object { $_ -like "*$artifact*" }
@@ -159,22 +159,22 @@ function Main {
             Write-ErrorLog "Could not find checksum for $artifact"
         }
         $expectedChecksum = ($expectedLine -split "\s+")[0].ToLower()
-        
+
         # Verify checksum
         $actualChecksum = Get-FileChecksum -FilePath $binaryPath
         if ($actualChecksum -ne $expectedChecksum) {
             Write-ErrorLog "Checksum mismatch!`n  Expected: $expectedChecksum`n  Actual:   $actualChecksum"
         }
         Write-Log "Checksum verified"
-        
+
         # Install
         $targetInstallDir = Get-TargetInstallDir
         if (-not (Test-Path $targetInstallDir)) {
             New-Item -ItemType Directory -Path $targetInstallDir -Force | Out-Null
         }
-        
+
         $destPath = Join-Path $targetInstallDir $destName
-        
+
         # Stop existing daemon if running
         $existingProcess = Get-Process -Name $BinaryName -ErrorAction SilentlyContinue
         if ($existingProcess) {
@@ -182,16 +182,16 @@ function Main {
             Stop-Process -Name $BinaryName -Force -ErrorAction SilentlyContinue
             Start-Sleep -Seconds 1
         }
-        
+
         Move-Item -Path $binaryPath -Destination $destPath -Force
-        
+
         Write-Log "Installed to $destPath"
-        
+
         # Check PATH
         if (-not (Test-InPath -Directory $targetInstallDir)) {
             Write-Log ""
             Write-Log "Note: $targetInstallDir is not in your PATH."
-            
+
             if ($AddToPath) {
                 Add-ToUserPath -Directory $targetInstallDir
                 Write-Log "Restart your terminal for PATH changes to take effect."
@@ -201,7 +201,7 @@ function Main {
                 Write-Log "  `$env:PATH = `"$targetInstallDir;`$env:PATH`""
             }
         }
-        
+
         Write-Log ""
         Write-Log "Done! Run 'clankers-daemon --help' to get started."
     }

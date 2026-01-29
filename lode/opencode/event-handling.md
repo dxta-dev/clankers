@@ -8,13 +8,14 @@ Invariants
 - `message.updated` and `message.part.updated` both feed the aggregation stage.
 - Plugins assume the daemon owns database creation and only write via RPC.
 - Events are skipped if the daemon is unreachable.
+- OpenCode uses `sessionID` (not `id`) for session identifiers in all event payloads.
 
 Links: [plugins](plugins.md), [aggregation](../ingestion/aggregation.md), [sqlite](../storage/sqlite.md)
 
 Example
 ```ts
 if (event.type === "session.updated") {
-  rpc.upsertSession({ id: session.id, title: session.title ?? "Untitled" });
+  rpc.upsertSession({ id: session.sessionID, title: session.title ?? "Untitled" });
 }
 ```
 

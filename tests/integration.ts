@@ -1,13 +1,3 @@
-/**
- * Integration test for daemon + RPC client.
- *
- * Validates:
- * 1. Health check - daemon responds with ok: true
- * 2. Round-trip - upsertSession + upsertMessage work correctly
- *
- * Requires CLANKERS_SOCKET_PATH to be set (daemon must be running).
- */
-
 import { createRpcClient } from "../packages/core/src/rpc-client.js";
 
 const rpc = createRpcClient({
@@ -47,7 +37,6 @@ async function testRoundTrip(): Promise<void> {
 	const sessionId = `test-session-${Date.now()}`;
 	const messageId = `test-message-${Date.now()}`;
 
-	// Upsert session
 	const sessionResult = await rpc.upsertSession({
 		id: sessionId,
 		title: "Integration Test Session",
@@ -67,7 +56,6 @@ async function testRoundTrip(): Promise<void> {
 	}
 	console.log("  Session upserted OK");
 
-	// Upsert message
 	const messageResult = await rpc.upsertMessage({
 		id: messageId,
 		sessionId: sessionId,

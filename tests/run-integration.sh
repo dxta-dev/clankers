@@ -1,9 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Integration test runner
-# Starts daemon, runs tests, cleans up
-
 TEST_DIR=$(mktemp -d)
 export CLANKERS_SOCKET_PATH="$TEST_DIR/clankers.sock"
 export CLANKERS_DB_PATH="$TEST_DIR/clankers.db"
@@ -22,7 +19,6 @@ echo "Starting daemon..."
 echo "  Socket: $CLANKERS_SOCKET_PATH"
 echo "  DB: $CLANKERS_DB_PATH"
 
-# Find daemon binary - check nix result first, then PATH
 if [ -x "./result-daemon/bin/clankers-daemon" ]; then
     DAEMON_BIN="./result-daemon/bin/clankers-daemon"
 elif command -v clankers-daemon &>/dev/null; then
@@ -35,7 +31,6 @@ fi
 "$DAEMON_BIN" &
 DAEMON_PID=$!
 
-# Wait for socket
 for i in $(seq 1 30); do
     if [ -S "$CLANKERS_SOCKET_PATH" ]; then
         echo "Daemon ready after $i attempts"

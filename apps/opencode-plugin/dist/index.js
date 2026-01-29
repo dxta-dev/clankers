@@ -13774,7 +13774,7 @@ config(en_default());
 
 // ../../packages/core/src/schemas.ts
 var SessionEventSchema = external_exports.object({
-  id: external_exports.string(),
+  sessionID: external_exports.string(),
   title: external_exports.string().optional(),
   directory: external_exports.string().optional(),
   cwd: external_exports.string().optional(),
@@ -14062,7 +14062,7 @@ async function handleEvent(event, rpc) {
     const parsed = SessionEventSchema.safeParse(props);
     if (!parsed.success) return;
     const session = parsed.data;
-    const sessionId = session.id;
+    const sessionId = session.sessionID;
     if (event.type === "session.created") {
       if (syncedSessions.has(sessionId)) return;
       syncedSessions.add(sessionId);
@@ -14075,7 +14075,7 @@ async function handleEvent(event, rpc) {
     const completionTokens = session.tokens?.output || session.usage?.completionTokens || 0;
     const cost = session.cost || session.usage?.cost || 0;
     await rpc.upsertSession({
-      id: session.id,
+      id: session.sessionID,
       title: session.title || "Untitled Session",
       projectPath,
       projectName: projectPath?.split("/").pop(),

@@ -1,8 +1,13 @@
 # Plan: Fix Session Creation in OpenCode Plugin
 
-> Status: **Pending Investigation**  
+> Status: **Resolved**  
 > Created: 2026-01-30  
+> Resolved: 2026-01-30  
 > Context: Dev environment check revealed sessions aren't being created
+
+## Root Cause
+
+The `SessionEventSchema` expected `id` as the session identifier field, but OpenCode actually sends `sessionID` (consistent with message events that use `sessionID` and `messageID`). This caused Zod validation to fail silently on all session events, preventing sessions from being created while messages worked fine.
 
 ## Current State
 
@@ -118,10 +123,43 @@ Once root cause is identified:
 
 ## Success Criteria
 
-- [ ] `SELECT COUNT(*) FROM sessions` returns > 0 after a conversation
-- [ ] Sessions have correct metadata (title, project, model, tokens)
-- [ ] Messages reference sessions via `session_id` foreign key
-- [ ] No duplicate sessions created for same conversation
+- [x] `SELECT COUNT(*) FROM sessions` returns > 0 after a conversation
+- [x] Sessions have correct metadata (title, project, model, tokens)
+- [x] Messages reference sessions via `session_id` foreign key
+- [x] No duplicate sessions created for same conversation
+
+## Changes Made
+
+### 1. Fixed `SessionEventSchema` (`packages/core/src/schemas.ts`)
+
+Changed session identifier field from `id` to `sessionID`:
+
+```ts
+// Before
+id: z.string()
+
+// After  
+sessionID: z.string()
+```
+
+### 2. Updated Plugin Handler (`apps/opencode-plugin/src/index.ts`)
+
+Updated references from `session.id` to `session.sessionID`:
+
+```ts
+const sessionId = session.sessionID;
+// ...
+await rpc.upsertSession({
+  id: session.sessionID,
+  // ...
+});
+```
+
+### 3. Updated Documentation (`lode/data-model/schemas.md`)
+
+Added invariants documenting OpenCode's field naming conventions:
+- OpenCode uses `sessionID` for session identifiers
+- OpenCode uses `messageID` for message identifiers
 
 ## Related Lodes
 

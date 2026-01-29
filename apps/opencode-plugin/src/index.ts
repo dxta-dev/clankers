@@ -27,7 +27,7 @@ async function handleEvent(
 		const parsed = SessionEventSchema.safeParse(props);
 		if (!parsed.success) return;
 		const session = parsed.data;
-		const sessionId = session.id;
+		const sessionId = session.sessionID;
 		if (event.type === "session.created") {
 			if (syncedSessions.has(sessionId)) return;
 			syncedSessions.add(sessionId);
@@ -50,7 +50,7 @@ async function handleEvent(
 		const cost = session.cost || session.usage?.cost || 0;
 
 		await rpc.upsertSession({
-			id: session.id,
+			id: session.sessionID,
 			title: session.title || "Untitled Session",
 			projectPath,
 			projectName: projectPath?.split("/").pop(),
