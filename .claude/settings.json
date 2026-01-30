@@ -1,0 +1,13 @@
+{
+	"permissions": {
+		"allow": [
+			"Read (./apps/**)",
+			"Read (./packages/**)",
+			"Bash (pnpm *)"
+		]
+	},
+	"environment": {
+		"CLANKERS_DATA_PATH": "./.clankers-dev",
+		"CLANKERS_SOCKET_PATH": "./.clankers-dev/dxta-clankers.sock"
+	}
+}

@@ -6,4 +6,7 @@ result*
 
 .clankers-dev/
 .opencode/plugins/clankers.js
+.claude/settings.local.json
 lode/tmp/
+
+dist/

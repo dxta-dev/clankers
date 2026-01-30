@@ -514,11 +514,17 @@
               echo "  DB: $CLANKERS_DB_PATH"
               echo ""
               echo "Commands:"
-              echo "  clankers-daemon              - Start daemon manually"
-              echo "  clankers-daemon --help       - Show daemon options"
+              echo "  clankers-daemon                   - Start daemon manually"
+              echo "  clankers-daemon --help            - Show daemon options"
               echo ""
-              echo "Other dev shells:"
-              echo "  nix develop .#with-daemon-and-plugin - Dev shell with auto-started daemon + plugin setup"
+              echo "Quick start (recommended):"
+              echo "  nix develop .#with-all-plugins    - Both plugins + auto-daemon"
+              echo ""
+              echo "Individual dev shells:"
+              echo "  nix develop .#with-plugin                  - OpenCode plugin only"
+              echo "  nix develop .#with-daemon-and-plugin       - OpenCode + daemon"
+              echo "  nix develop .#with-claude-plugin           - Claude Code plugin only"
+              echo "  nix develop .#with-claude-daemon-and-plugin - Claude Code + daemon"
               echo ""
 
               # Create dev data directory
@@ -596,6 +602,11 @@
               echo "  Plugin: $PWD/.opencode/plugins/clankers.js"
               echo ""
               echo "Restart OpenCode in this directory to load the local plugin."
+              echo ""
+              echo "Other dev shells:"
+              echo "  nix develop .#with-daemon-and-plugin       - Auto-start daemon + plugin"
+              echo "  nix develop .#with-claude-plugin           - Claude Code plugin setup"
+              echo "  nix develop .#with-claude-daemon-and-plugin - Claude Code with auto-daemon"
             '';
           };
 
@@ -683,6 +694,10 @@
               echo "The daemon will stop when you exit this shell."
               echo "Restart OpenCode in this directory to load the local plugin."
               echo ""
+              echo "Other dev shells:"
+              echo "  nix develop .#with-claude-plugin           - Claude Code plugin setup"
+              echo "  nix develop .#with-claude-daemon-and-plugin - Claude Code with auto-daemon"
+              echo ""
 
               # Set up cleanup on shell exit
               cleanup_daemon() {
@@ -698,6 +713,376 @@
                 fi
               }
               trap cleanup_daemon EXIT
+            '';
+          };
+
+          with-claude-plugin = pkgs.mkShell {
+            packages = [
+              pkgs.nodejs_24
+              pkgs.pnpm
+              pkgs.nodePackages.typescript
+              pkgs.nodePackages.typescript-language-server
+              pkgs.go
+              pkgs.sqlite
+              pkgs.biome
+              daemon
+            ];
+
+            shellHook = ''
+                            export CLANKERS_DATA_PATH="$PWD/.clankers-dev"
+                            export CLANKERS_SOCKET_PATH="$PWD/.clankers-dev/dxta-clankers.sock"
+                            export CLANKERS_DB_PATH="$PWD/.clankers-dev/clankers.db"
+
+                            echo "Clankers dev shell (with Claude Code plugin setup) loaded"
+                            echo "  Node: $(node --version)"
+                            echo "  pnpm: $(pnpm --version)"
+                            echo "  Go:   $(go version | cut -d' ' -f3)"
+                            echo ""
+
+                            # Create dev data directory
+                            mkdir -p "$CLANKERS_DATA_PATH"
+
+                            # Create .claude directory structure
+                            mkdir -p "$PWD/.claude"
+
+                            # Build the Claude Code plugin
+                            echo "Building Claude Code plugin..."
+                            if pnpm --filter @dxta-dev/clankers-claude-code build 2>/dev/null; then
+                              if [ -f "$PWD/apps/claude-code-plugin/dist/index.js" ]; then
+                                echo "Plugin built successfully at apps/claude-code-plugin/dist/index.js"
+                              else
+                                echo "Warning: Build succeeded but output not found"
+                              fi
+                            else
+                              echo "Warning: Plugin build failed (may need pnpm install)"
+                            fi
+
+                            # Create project-level settings if it doesn't exist
+                            if [ ! -f "$PWD/.claude/settings.json" ]; then
+                              cat > "$PWD/.claude/settings.json" << 'EOF'
+              {
+                "permissions": {
+                  "allow": [
+                    "Read (./apps/**)",
+                    "Read (./packages/**)",
+                    "Bash (pnpm *)"
+                  ]
+                },
+                "environment": {
+                  "CLANKERS_DATA_PATH": "./.clankers-dev",
+                  "CLANKERS_SOCKET_PATH": "./.clankers-dev/dxta-clankers.sock"
+                }
+              }
+              EOF
+                              echo "Created .claude/settings.json"
+                            fi
+
+                            # Create local settings (git-ignored) if it doesn't exist
+                            if [ ! -f "$PWD/.claude/settings.local.json" ]; then
+                              echo '{}' > "$PWD/.claude/settings.local.json"
+                              echo "Created .claude/settings.local.json"
+                            fi
+
+                            # Check if daemon is already running
+                            if [ -S "$CLANKERS_SOCKET_PATH" ]; then
+                              echo ""
+                              echo "Daemon appears to be running (socket exists)"
+                            else
+                              echo ""
+                              echo "Daemon not running. Start with: clankers-daemon &"
+                            fi
+
+                            echo ""
+                            echo "Setup complete! Claude Code plugin is ready."
+                            echo "  Config: $PWD/.claude/settings.json"
+                            echo "  Plugin: $PWD/apps/claude-code-plugin/dist/index.js"
+                            echo ""
+                            echo "To use with Claude Code:"
+                            echo "  claude --plugin-dir $PWD/apps/claude-code-plugin"
+                            echo ""
+                             echo "Other dev shells:"
+                             echo "  nix develop .#with-claude-daemon-and-plugin - Claude with auto-daemon"
+                             echo "  nix develop .#with-plugin                  - OpenCode plugin setup"
+                             echo "  nix develop .#with-daemon-and-plugin       - OpenCode with auto-daemon"
+            '';
+          };
+
+          with-claude-daemon-and-plugin = pkgs.mkShell {
+            packages = [
+              pkgs.nodejs_24
+              pkgs.pnpm
+              pkgs.nodePackages.typescript
+              pkgs.nodePackages.typescript-language-server
+              pkgs.go
+              pkgs.sqlite
+              pkgs.biome
+              daemon
+            ];
+
+            shellHook = ''
+                            export CLANKERS_DATA_PATH="$PWD/.clankers-dev"
+                            export CLANKERS_SOCKET_PATH="$PWD/.clankers-dev/dxta-clankers.sock"
+                            export CLANKERS_DB_PATH="$PWD/.clankers-dev/clankers.db"
+
+                            echo "Clankers dev shell (with Claude Code daemon + plugin) loaded"
+                            echo "  Node: $(node --version)"
+                            echo "  pnpm: $(pnpm --version)"
+                            echo "  Go:   $(go version | cut -d' ' -f3)"
+                            echo ""
+
+                            # Create dev data directory
+                            mkdir -p "$CLANKERS_DATA_PATH"
+
+                            # Kill any existing daemon on this socket
+                            if [ -S "$CLANKERS_SOCKET_PATH" ]; then
+                              echo "Cleaning up old socket..."
+                              rm -f "$CLANKERS_SOCKET_PATH"
+                            fi
+
+                            # Start daemon in background
+                            echo "Starting clankers-daemon..."
+                            clankers-daemon --log-level=debug &
+                            DAEMON_PID=$!
+
+                            # Store PID for cleanup
+                            echo $DAEMON_PID > "$CLANKERS_DATA_PATH/daemon.pid"
+
+                            # Wait for socket
+                            for i in $(seq 1 30); do
+                              if [ -S "$CLANKERS_SOCKET_PATH" ]; then
+                                echo "Daemon ready (PID: $DAEMON_PID)"
+                                break
+                              fi
+                              sleep 0.1
+                            done
+
+                            if [ ! -S "$CLANKERS_SOCKET_PATH" ]; then
+                              echo "WARNING: Daemon may not have started properly"
+                            fi
+
+                            # Create .claude directory structure
+                            mkdir -p "$PWD/.claude"
+
+                            # Build the Claude Code plugin
+                            echo ""
+                            echo "Building Claude Code plugin..."
+                            if pnpm --filter @dxta-dev/clankers-claude-code build 2>/dev/null; then
+                              if [ -f "$PWD/apps/claude-code-plugin/dist/index.js" ]; then
+                                echo "Plugin built successfully at apps/claude-code-plugin/dist/index.js"
+                              else
+                                echo "Warning: Build succeeded but output not found"
+                              fi
+                            else
+                              echo "Warning: Plugin build failed (may need pnpm install)"
+                            fi
+
+                            # Create project-level settings if it doesn't exist
+                            if [ ! -f "$PWD/.claude/settings.json" ]; then
+                              cat > "$PWD/.claude/settings.json" << 'EOF'
+              {
+                "permissions": {
+                  "allow": [
+                    "Read (./apps/**)",
+                    "Read (./packages/**)",
+                    "Bash (pnpm *)"
+                  ]
+                },
+                "environment": {
+                  "CLANKERS_DATA_PATH": "./.clankers-dev",
+                  "CLANKERS_SOCKET_PATH": "./.clankers-dev/dxta-clankers.sock"
+                }
+              }
+              EOF
+                              echo "Created .claude/settings.json"
+                            fi
+
+                            # Create local settings (git-ignored) if it doesn't exist
+                            if [ ! -f "$PWD/.claude/settings.local.json" ]; then
+                              echo '{}' > "$PWD/.claude/settings.local.json"
+                              echo "Created .claude/settings.local.json"
+                            fi
+
+                            echo ""
+                            echo "Socket: $CLANKERS_SOCKET_PATH"
+                            echo "Config: $PWD/.claude/settings.json"
+                            echo "Plugin: $PWD/apps/claude-code-plugin"
+                            echo ""
+                             echo "The daemon will stop when you exit this shell."
+                             echo "To use with Claude Code:"
+                             echo "  claude --plugin-dir $PWD/apps/claude-code-plugin"
+                             echo ""
+                             echo "Other dev shells:"
+                             echo "  nix develop .#with-claude-plugin           - Claude without auto-daemon"
+                             echo "  nix develop .#with-plugin                  - OpenCode plugin setup"
+                             echo "  nix develop .#with-daemon-and-plugin       - OpenCode with auto-daemon"
+                             echo ""
+
+                             # Set up cleanup on shell exit
+                            cleanup_daemon() {
+                              if [ -f "$CLANKERS_DATA_PATH/daemon.pid" ]; then
+                                local pid=$(cat "$CLANKERS_DATA_PATH/daemon.pid")
+                                if kill -0 "$pid" 2>/dev/null; then
+                                  echo ""
+                                  echo "Stopping daemon (PID: $pid)..."
+                                  kill "$pid" 2>/dev/null || true
+                                  wait "$pid" 2>/dev/null || true
+                                fi
+                                rm -f "$CLANKERS_DATA_PATH/daemon.pid"
+                              fi
+                            }
+                             trap cleanup_daemon EXIT
+            '';
+          };
+
+          with-all-plugins = pkgs.mkShell {
+            packages = [
+              pkgs.nodejs_24
+              pkgs.pnpm
+              pkgs.nodePackages.typescript
+              pkgs.nodePackages.typescript-language-server
+              pkgs.go
+              pkgs.sqlite
+              pkgs.biome
+              daemon
+            ];
+
+            shellHook = ''
+                            export CLANKERS_DATA_PATH="$PWD/.clankers-dev"
+                            export CLANKERS_SOCKET_PATH="$PWD/.clankers-dev/dxta-clankers.sock"
+                            export CLANKERS_DB_PATH="$PWD/.clankers-dev/clankers.db"
+
+                            echo "Clankers dev shell (with all plugins + daemon) loaded"
+                            echo "  Node: $(node --version)"
+                            echo "  pnpm: $(pnpm --version)"
+                            echo "  Go:   $(go version | cut -d' ' -f3)"
+                            echo ""
+
+                            # Create dev data directory
+                            mkdir -p "$CLANKERS_DATA_PATH"
+
+                            # Kill any existing daemon on this socket
+                            if [ -S "$CLANKERS_SOCKET_PATH" ]; then
+                              echo "Cleaning up old socket..."
+                              rm -f "$CLANKERS_SOCKET_PATH"
+                            fi
+
+                            # Start daemon in background
+                            echo "Starting clankers-daemon..."
+                            clankers-daemon --log-level=debug &
+                            DAEMON_PID=$!
+
+                            # Store PID for cleanup
+                            echo $DAEMON_PID > "$CLANKERS_DATA_PATH/daemon.pid"
+
+                            # Wait for socket
+                            for i in $(seq 1 30); do
+                              if [ -S "$CLANKERS_SOCKET_PATH" ]; then
+                                echo "Daemon ready (PID: $DAEMON_PID)"
+                                break
+                              fi
+                              sleep 0.1
+                            done
+
+                            if [ ! -S "$CLANKERS_SOCKET_PATH" ]; then
+                              echo "WARNING: Daemon may not have started properly"
+                            fi
+
+                            echo ""
+
+                            # ========== OpenCode Setup ==========
+                            mkdir -p "$PWD/.opencode/plugins"
+
+                            echo "Building OpenCode plugin..."
+                            if pnpm --filter @dxta-dev/clankers-opencode build 2>/dev/null; then
+                              if [ -f "$PWD/apps/opencode-plugin/dist/index.js" ]; then
+                                cp "$PWD/apps/opencode-plugin/dist/index.js" "$PWD/.opencode/plugins/clankers.js"
+                                echo "OpenCode plugin ready at .opencode/plugins/clankers.js"
+                              else
+                                echo "Warning: OpenCode build succeeded but output not found"
+                              fi
+                            else
+                              echo "Warning: OpenCode plugin build failed"
+                            fi
+
+                            if [ ! -f "$PWD/.opencode/config.json" ]; then
+                              echo '{"$schema":"https://opencode.ai/config.json","plugin":["./plugins/clankers.js"]}' > "$PWD/.opencode/config.json"
+                              echo "Created .opencode/config.json"
+                            fi
+
+                            # ========== Claude Code Setup ==========
+                            mkdir -p "$PWD/.claude"
+
+                            echo ""
+                            echo "Building Claude Code plugin..."
+                            if pnpm --filter @dxta-dev/clankers-claude-code build 2>/dev/null; then
+                              if [ -f "$PWD/apps/claude-code-plugin/dist/index.js" ]; then
+                                echo "Claude Code plugin ready at apps/claude-code-plugin/dist/index.js"
+                              else
+                                echo "Warning: Claude build succeeded but output not found"
+                              fi
+                            else
+                              echo "Warning: Claude Code plugin build failed"
+                            fi
+
+                            if [ ! -f "$PWD/.claude/settings.json" ]; then
+                              cat > "$PWD/.claude/settings.json" << 'EOF'
+              {
+                "permissions": {
+                  "allow": [
+                    "Read (./apps/**)",
+                    "Read (./packages/**)",
+                    "Bash (pnpm *)"
+                  ]
+                },
+                "environment": {
+                  "CLANKERS_DATA_PATH": "./.clankers-dev",
+                  "CLANKERS_SOCKET_PATH": "./.clankers-dev/dxta-clankers.sock"
+                }
+              }
+              EOF
+                              echo "Created .claude/settings.json"
+                            fi
+
+                            if [ ! -f "$PWD/.claude/settings.local.json" ]; then
+                              echo '{}' > "$PWD/.claude/settings.local.json"
+                              echo "Created .claude/settings.local.json"
+                            fi
+
+                            # ========== Summary ==========
+                            echo ""
+                            echo "========================================"
+                            echo "All plugins ready!"
+                            echo "========================================"
+                            echo ""
+                            echo "OpenCode:"
+                            echo "  Config:  $PWD/.opencode/config.json"
+                            echo "  Plugin:  $PWD/.opencode/plugins/clankers.js"
+                            echo "  Usage:   Restart OpenCode in this directory"
+                            echo ""
+                            echo "Claude Code:"
+                            echo "  Config:  $PWD/.claude/settings.json"
+                            echo "  Plugin:  $PWD/apps/claude-code-plugin"
+                            echo "  Usage:   claude --plugin-dir $PWD/apps/claude-code-plugin"
+                            echo ""
+                            echo "Socket:    $CLANKERS_SOCKET_PATH"
+                            echo ""
+                            echo "The daemon will stop when you exit this shell."
+                            echo ""
+
+                            # Set up cleanup on shell exit
+                            cleanup_daemon() {
+                              if [ -f "$CLANKERS_DATA_PATH/daemon.pid" ]; then
+                                local pid=$(cat "$CLANKERS_DATA_PATH/daemon.pid")
+                                if kill -0 "$pid" 2>/dev/null; then
+                                  echo ""
+                                  echo "Stopping daemon (PID: $pid)..."
+                                  kill "$pid" 2>/dev/null || true
+                                  wait "$pid" 2>/dev/null || true
+                                fi
+                                rm -f "$CLANKERS_DATA_PATH/daemon.pid"
+                              fi
+                            }
+                            trap cleanup_daemon EXIT
             '';
           };
         }
