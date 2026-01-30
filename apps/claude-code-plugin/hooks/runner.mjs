@@ -1,5 +1,4 @@
 #!/usr/bin/env node
-// Shell hook runner - bridges Claude Code shell hooks to our TypeScript plugin
 
 import { createPlugin } from '../dist/index.js';
 
@@ -10,7 +9,6 @@ if (!hookName) {
   process.exit(1);
 }
 
-// Read event data from stdin
 let inputData = '';
 process.stdin.setEncoding('utf8');
 
@@ -22,7 +20,6 @@ process.stdin.on('end', async () => {
   try {
     const event = JSON.parse(inputData);
 
-    // Create plugin instance
     const plugin = createPlugin();
 
     if (!plugin) {
@@ -30,7 +27,6 @@ process.stdin.on('end', async () => {
       process.exit(0);
     }
 
-    // Get the handler for this hook
     const handler = plugin[hookName];
 
     if (typeof handler !== 'function') {
@@ -38,7 +34,6 @@ process.stdin.on('end', async () => {
       process.exit(0);
     }
 
-    // Call the handler
     await handler(event);
 
   } catch (err) {
@@ -48,7 +43,6 @@ process.stdin.on('end', async () => {
   process.exit(0);
 });
 
-// Handle no stdin (shouldn't happen, but be safe)
 setTimeout(() => {
   if (!inputData) {
     console.error('[clankers] No input received');

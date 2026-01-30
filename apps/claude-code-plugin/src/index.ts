@@ -17,18 +17,14 @@ import type {
 	UserPromptEvent,
 } from "./types.js";
 
-// Track session state for accumulating token usage
 const sessionState = new Map<string, Partial<SessionPayload>>();
 
-// Track processed message IDs to prevent duplicates
 const processedMessages = new Set<string>();
 
-// Generate message ID based on session, role, and timestamp
 function generateMessageId(sessionId: string, role: string): string {
 	return `${sessionId}-${role}-${Date.now()}`;
 }
 
-// Extract project name from cwd
 function getProjectName(cwd: string): string | undefined {
 	const parts = cwd.split(/[/\\]/);
 	return parts[parts.length - 1] || undefined;
@@ -40,11 +36,9 @@ export function createPlugin(): ClaudeCodeHooks | null {
 		clientVersion: "0.1.0",
 	});
 
-	// Connection state: null = pending, true = connected, false = failed
 	let connectionState: boolean | null = null;
 	let connectionPromise: Promise<boolean> | null = null;
 
-	// Start health check immediately
 	connectionPromise = rpc
 		.health()
 		.then((health) => {
@@ -62,7 +56,6 @@ export function createPlugin(): ClaudeCodeHooks | null {
 			return false;
 		});
 
-	// Helper to wait for connection before processing events
 	async function waitForConnection(): Promise<boolean> {
 		if (connectionState !== null) {
 			return connectionState;
@@ -87,7 +80,6 @@ export function createPlugin(): ClaudeCodeHooks | null {
 			const data = parsed.data;
 			const sessionId = data.session_id;
 
-			// Initialize session state
 			sessionState.set(sessionId, {
 				id: sessionId,
 				projectPath: data.cwd,
@@ -127,7 +119,6 @@ export function createPlugin(): ClaudeCodeHooks | null {
 			const sessionId = data.session_id;
 			const messageId = generateMessageId(sessionId, "user");
 
-			// Check for duplicates (shouldn't happen for user prompts, but be safe)
 			if (processedMessages.has(messageId)) {
 				return;
 			}
@@ -163,7 +154,6 @@ export function createPlugin(): ClaudeCodeHooks | null {
 
 			const data = parsed.data;
 
-			// Skip if stop_hook_active to prevent loops
 			if (data.stop_hook_active) {
 				return;
 			}
@@ -171,13 +161,11 @@ export function createPlugin(): ClaudeCodeHooks | null {
 			const sessionId = data.session_id;
 			const messageId = generateMessageId(sessionId, "assistant");
 
-			// Check for duplicates (Stop can fire multiple times)
 			if (processedMessages.has(messageId)) {
 				return;
 			}
 			processedMessages.add(messageId);
 
-			// Update session state with accumulated tokens
 			const currentState = sessionState.get(sessionId) || {};
 			const accumulatedPromptTokens =
 				(currentState.promptTokens || 0) + (data.tokenUsage?.input || 0);
@@ -225,10 +213,8 @@ export function createPlugin(): ClaudeCodeHooks | null {
 			const data = parsed.data;
 			const sessionId = data.session_id;
 
-			// Get accumulated state or create new
 			const currentState = sessionState.get(sessionId) || {};
 
-			// Use SessionEnd stats if available, otherwise use accumulated state
 			const finalSession: SessionPayload = {
 				id: sessionId,
 				projectPath: data.cwd,
@@ -251,7 +237,6 @@ export function createPlugin(): ClaudeCodeHooks | null {
 				);
 			}
 
-			// Clean up session state
 			sessionState.delete(sessionId);
 		},
 	};

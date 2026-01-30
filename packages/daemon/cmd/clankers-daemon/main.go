@@ -19,16 +19,12 @@ import (
 	"github.com/sourcegraph/jsonrpc2"
 )
 
-// filteredLogWriter wraps an io.Writer and suppresses benign jsonrpc2
-// protocol errors that occur when clients close connections after receiving
-// responses. This prevents noise in OpenCode's UI.
 type filteredLogWriter struct {
 	w io.Writer
 }
 
 func (f *filteredLogWriter) Write(p []byte) (n int, err error) {
 	s := string(p)
-	// Suppress common benign connection errors from jsonrpc2 library
 	if strings.Contains(s, "connection reset by peer") ||
 		strings.Contains(s, "broken pipe") ||
 		strings.Contains(s, "use of closed network connection") {
@@ -38,9 +34,6 @@ func (f *filteredLogWriter) Write(p []byte) (n int, err error) {
 }
 
 func main() {
-	// Filter out benign jsonrpc2 connection errors from logs to prevent
-	// noise in OpenCode's UI. These errors occur when clients close connections
-	// after receiving responses, which is expected behavior.
 	log.SetOutput(&filteredLogWriter{w: os.Stderr})
 
 	var (
@@ -50,7 +43,12 @@ func main() {
 		logLevel   string
 	)
 
-	flag.StringVar(&socketPath, "socket", "", "socket path (default: data root + dxta-clankers.sock)")
+	flag.StringVar(
+		&socketPath,
+		"socket",
+		"",
+		"socket path (default: data root + dxta-clankers.sock)",
+	)
 	flag.StringVar(&dataRoot, "data-root", "", "data root directory (overrides CLANKERS_DATA_PATH)")
 	flag.StringVar(&dbPath, "db-path", "", "database file path (overrides CLANKERS_DB_PATH)")
 	flag.StringVar(&logLevel, "log-level", "info", "log level: debug, info, warn, error")
@@ -136,10 +134,12 @@ func serveConn(ctx context.Context, conn net.Conn, handler *rpc.Handler) {
 	rpcConn := jsonrpc2.NewConn(
 		ctx,
 		stream,
-		jsonrpc2.HandlerWithError(func(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) (interface{}, error) {
-			handler.Handle(ctx, conn, req)
-			return nil, nil
-		}),
+		jsonrpc2.HandlerWithError(
+			func(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) (interface{}, error) {
+				handler.Handle(ctx, conn, req)
+				return nil, nil
+			},
+		),
 	)
 
 	<-rpcConn.DisconnectNotify()
