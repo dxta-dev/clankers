@@ -10,7 +10,6 @@ import (
 	"github.com/dxta-dev/clankers-daemon/internal/paths"
 )
 
-// Profile represents a configuration profile for sync settings
 type Profile struct {
 	Endpoint     string `json:"endpoint,omitempty"`
 	SyncEnabled  bool   `json:"sync_enabled"`
@@ -18,13 +17,11 @@ type Profile struct {
 	AuthMode     string `json:"auth"`          // "none" for Phase 1
 }
 
-// Config holds all profiles and the active profile name
 type Config struct {
 	Profiles      map[string]Profile `json:"profiles"`
 	ActiveProfile string             `json:"active_profile"`
 }
 
-// DefaultProfile returns a profile with sensible defaults
 func DefaultProfile() Profile {
 	return Profile{
 		SyncEnabled:  false,
@@ -33,7 +30,6 @@ func DefaultProfile() Profile {
 	}
 }
 
-// DefaultConfig returns a new config with a default profile
 func DefaultConfig() *Config {
 	return &Config{
 		Profiles: map[string]Profile{
@@ -43,22 +39,18 @@ func DefaultConfig() *Config {
 	}
 }
 
-// Load reads the config from disk or returns a default config if not found
 func Load() (*Config, error) {
 	configPath := paths.GetConfigPath()
 
-	// Ensure directory exists
 	dir := filepath.Dir(configPath)
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return nil, fmt.Errorf("failed to create config directory: %w", err)
 	}
 
-	// Check if file exists
 	if _, err := os.Stat(configPath); os.IsNotExist(err) {
 		return DefaultConfig(), nil
 	}
 
-	// Read and parse config
 	data, err := os.ReadFile(configPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read config: %w", err)
@@ -69,7 +61,6 @@ func Load() (*Config, error) {
 		return nil, fmt.Errorf("failed to parse config: %w", err)
 	}
 
-	// Ensure at least default profile exists
 	if cfg.Profiles == nil {
 		cfg.Profiles = make(map[string]Profile)
 	}
@@ -77,29 +68,24 @@ func Load() (*Config, error) {
 		cfg.Profiles["default"] = DefaultProfile()
 	}
 
-	// Apply env var overrides to active profile
 	cfg.applyEnvOverrides()
 
 	return &cfg, nil
 }
 
-// Save writes the config to disk
 func (c *Config) Save() error {
 	configPath := paths.GetConfigPath()
 
-	// Ensure directory exists
 	dir := filepath.Dir(configPath)
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return fmt.Errorf("failed to create config directory: %w", err)
 	}
 
-	// Marshal with indentation for readability
 	data, err := json.MarshalIndent(c, "", "  ")
 	if err != nil {
 		return fmt.Errorf("failed to marshal config: %w", err)
 	}
 
-	// Write file
 	if err := os.WriteFile(configPath, data, 0644); err != nil {
 		return fmt.Errorf("failed to write config: %w", err)
 	}
@@ -107,7 +93,6 @@ func (c *Config) Save() error {
 	return nil
 }
 
-// GetActiveProfile returns the currently active profile
 func (c *Config) GetActiveProfile() Profile {
 	profile, ok := c.Profiles[c.ActiveProfile]
 	if !ok {
@@ -116,7 +101,6 @@ func (c *Config) GetActiveProfile() Profile {
 	return profile
 }
 
-// SetActiveProfile switches to a different profile
 func (c *Config) SetActiveProfile(name string) error {
 	if _, ok := c.Profiles[name]; !ok {
 		return fmt.Errorf("profile '%s' does not exist", name)
@@ -125,7 +109,6 @@ func (c *Config) SetActiveProfile(name string) error {
 	return nil
 }
 
-// GetProfileValue gets a value from the active profile
 func (c *Config) GetProfileValue(key string) (string, error) {
 	profile := c.GetActiveProfile()
 
@@ -143,7 +126,6 @@ func (c *Config) GetProfileValue(key string) (string, error) {
 	}
 }
 
-// SetProfileValue sets a value on the active profile
 func (c *Config) SetProfileValue(key, value string) error {
 	profile := c.GetActiveProfile()
 
@@ -172,7 +154,6 @@ func (c *Config) SetProfileValue(key, value string) error {
 	return nil
 }
 
-// CreateProfile creates a new profile
 func (c *Config) CreateProfile(name string) error {
 	if _, ok := c.Profiles[name]; ok {
 		return fmt.Errorf("profile '%s' already exists", name)
@@ -181,7 +162,6 @@ func (c *Config) CreateProfile(name string) error {
 	return nil
 }
 
-// DeleteProfile removes a profile (cannot delete 'default')
 func (c *Config) DeleteProfile(name string) error {
 	if name == "default" {
 		return fmt.Errorf("cannot delete the 'default' profile")
@@ -196,7 +176,6 @@ func (c *Config) DeleteProfile(name string) error {
 	return nil
 }
 
-// applyEnvOverrides applies environment variable overrides to the active profile
 func (c *Config) applyEnvOverrides() {
 	profile := c.GetActiveProfile()
 
@@ -212,7 +191,6 @@ func (c *Config) applyEnvOverrides() {
 	c.Profiles[c.ActiveProfile] = profile
 }
 
-// GetConfigPath returns the path to the config file (convenience function)
 func GetConfigPath() string {
 	return paths.GetConfigPath()
 }
