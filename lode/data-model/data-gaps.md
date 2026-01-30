@@ -14,15 +14,15 @@ Sessions
 
 | Field | OpenCode events | Claude Code hooks |
 | --- | --- | --- |
-| `title` | From `session.title` (defaults to "Untitled Session") | Set on `SessionStart`; omitted on `SessionEnd` so later upsert can overwrite with NULL/default |
+| `title` | From `session.title` (defaults to "Untitled Session") | Seeded as "Untitled Session" on `SessionStart` then replaced by the first user prompt; carried forward on `SessionEnd` |
 | `project_path` | `session.path.cwd` or `session.cwd` or `session.directory` | `SessionStart.cwd`, `SessionEnd.cwd` |
 | `project_name` | Derived from `project_path` | Derived from `cwd` |
-| `model` | `session.modelID` or `session.model.modelID` | `SessionStart.model`; omitted on `SessionEnd` so later upsert can clear it |
+| `model` | `session.modelID` or `session.model.modelID` | `SessionStart.model`; carried forward on `SessionEnd` |
 | `provider` | `session.providerID` or `session.model.providerID` | Hard-coded to `"anthropic"` |
 | `prompt_tokens` | `session.tokens.input` or `session.usage.promptTokens` | Accumulated from `Stop` events or `SessionEnd.totalTokenUsage` |
 | `completion_tokens` | `session.tokens.output` or `session.usage.completionTokens` | Accumulated from `Stop` events or `SessionEnd.totalTokenUsage` |
 | `cost` | `session.cost` or `session.usage.cost` | `SessionEnd.costEstimate` |
-| `created_at` | `session.time.created` | Not set (NULL) |
+| `created_at` | `session.time.created` | Set at `SessionStart` using local timestamp |
 | `updated_at` | `session.time.updated` | `SessionEnd` uses `Date.now()` |
 
 Messages
@@ -32,12 +32,12 @@ Messages
 | `id` | `message.id` from event payload | Generated as `${sessionId}-${role}-${Date.now()}` |
 | `session_id` | `message.sessionID` | `event.session_id` |
 | `role` | Payload role or inferred from text | Fixed `user` or `assistant` |
-| `text_content` | Aggregated from `message.part.updated` text parts | `UserPromptSubmit.prompt` or `Stop.response || ""` |
-| `model` | `message.modelID` | `Stop.model` (only if present in hook payload) |
-| `prompt_tokens` | `message.tokens.input` | `Stop.tokenUsage.input` (only if present) |
-| `completion_tokens` | `message.tokens.output` | `Stop.tokenUsage.output` (only if present) |
-| `duration_ms` | `message.time.completed - message.time.created` | `Stop.durationMs` (only if present) |
-| `created_at` | `message.time.created` | User: `Date.now()`; Assistant: not set |
+| `text_content` | Aggregated from `message.part.updated` text parts | User: `UserPromptSubmit.prompt`; Assistant: parsed from transcript |
+| `model` | `message.modelID` | Parsed from transcript `message.model` |
+| `prompt_tokens` | `message.tokens.input` | Parsed from transcript `message.usage.input_tokens` + cache tokens |
+| `completion_tokens` | `message.tokens.output` | Parsed from transcript `message.usage.output_tokens` |
+| `duration_ms` | `message.time.completed - message.time.created` | Calculated from user→assistant timestamps in transcript |
+| `created_at` | `message.time.created` | User: `Date.now()`; Assistant: user message timestamp from transcript |
 | `completed_at` | `message.time.completed` | Assistant: `Date.now()`; User: not set |
 
 ## Edge cases and missing data
@@ -46,25 +46,28 @@ Messages
 - **Partial upserts overwrite prior fields**: Later upserts replace all columns. Any omitted fields become NULL or defaulted (0/"Untitled Session") in the stored row. This is why Claude `SessionEnd` can wipe title/model created during `SessionStart`.
 - **OpenCode message aggregation requires both metadata and text parts**: If either `message.updated` or `message.part.updated` is missing, or the text part is empty/whitespace, the message is dropped.
 - **OpenCode stores only text parts**: Non-text parts are ignored; if the client sends incremental text deltas, only the latest staged text is kept.
-- **Claude assistant timestamps are incomplete**: `Stop` writes `completed_at` but not `created_at`, so assistant messages can have NULL `created_at`.
-- **Claude token/model fields depend on payload shape**: The plugin reads camelCase fields (`tokenUsage`, `durationMs`, `model`). If Claude emits snake_case or different keys, these fields will remain NULL/0 unless mapped.
-- **Claude assistant content may be empty**: `Stop.response` is optional; empty responses are stored as empty strings.
+- **Claude metadata comes from transcript parsing**: The Stop hook event does NOT include model/tokens/duration fields. The plugin reads the transcript JSONL file to extract this data. If transcript parsing fails, these fields default to NULL/0.
+- **Claude assistant content may be empty**: If transcript parsing fails or the assistant message has no text blocks, the response is stored as empty string.
 - **Claude stop hook recursion**: `stop_hook_active` events are ignored, so assistant messages can be skipped if the hook re-enters.
 - **Generated message IDs can collide**: IDs use `Date.now()`; multiple messages in the same millisecond for the same session+role can collide and be dropped as duplicates.
+- **Claude token counts include cache tokens**: `prompt_tokens` is calculated as `input_tokens + cache_creation_input_tokens + cache_read_input_tokens` to reflect total input token usage.
 
 Links: [schemas](schemas.md), [sqlite](../storage/sqlite.md), [opencode event handling](../opencode/event-handling.md), [claude plugin system](../claude/plugin-system.md), [claude data mapping](../claude/data-mapping.md)
 
 Example
 ```ts
-// Claude Code: SessionEnd omits title/model/createdAt
+// Claude Code: SessionEnd carries title/model/createdAt from session state
 await rpc.upsertSession({
 	id: sessionId,
 	projectPath: data.cwd,
 	projectName: getProjectName(data.cwd),
 	provider: "anthropic",
-	promptTokens: data.totalTokenUsage?.input,
-	completionTokens: data.totalTokenUsage?.output,
-	cost: data.costEstimate,
+	title: currentState.title,
+	model: currentState.model,
+	createdAt: currentState.createdAt,
+	promptTokens: totalTokenUsage.input ?? currentState.promptTokens,
+	completionTokens: totalTokenUsage.output ?? currentState.completionTokens,
+	cost: resolvedCost,
 	updatedAt: Date.now(),
 });
 ```

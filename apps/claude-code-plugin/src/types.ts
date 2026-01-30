@@ -17,6 +17,13 @@ export interface UserPromptEvent {
 	prompt: string;
 }
 
+export interface TokenUsage {
+	input?: number;
+	output?: number;
+	input_tokens?: number;
+	output_tokens?: number;
+}
+
 export interface StopEvent {
 	session_id: string;
 	transcript_path: string;
@@ -24,9 +31,13 @@ export interface StopEvent {
 	permission_mode: string;
 	hook_event_name: "Stop";
 	response?: string;
-	tokenUsage?: { input: number; output: number };
+	tokenUsage?: TokenUsage;
+	token_usage?: TokenUsage;
 	durationMs?: number;
+	duration_ms?: number;
 	model?: string;
+	model_name?: string;
+	model_id?: string;
 	stop_hook_active?: boolean;
 }
 
@@ -39,8 +50,10 @@ export interface SessionEndEvent {
 	reason: "clear" | "logout" | "prompt_input_exit" | "other";
 	messageCount?: number;
 	toolCallCount?: number;
-	totalTokenUsage?: { input: number; output: number };
+	totalTokenUsage?: TokenUsage;
+	total_token_usage?: TokenUsage;
 	costEstimate?: number;
+	cost_estimate?: number;
 }
 
 export interface ClaudeCodeHooks {
