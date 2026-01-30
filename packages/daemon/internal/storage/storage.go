@@ -109,7 +109,6 @@ type Message struct {
 	CompletedAt      *int64  `json:"completedAt,omitempty"`
 }
 
-// QueryResult represents a row from a raw SQL query
 type QueryResult map[string]interface{}
 
 func EnsureDb(dbPath string) (bool, error) {
@@ -225,7 +224,6 @@ func (s *Store) UpsertMessage(msg *Message) error {
 	return err
 }
 
-// GetSessions retrieves sessions with optional limit
 func (s *Store) GetSessions(limit int) ([]Session, error) {
 	query := `SELECT id, title, project_path, project_name, model, provider,
 		prompt_tokens, completion_tokens, cost, created_at, updated_at
@@ -299,7 +297,6 @@ func (s *Store) GetSessions(limit int) ([]Session, error) {
 	return sessions, rows.Err()
 }
 
-// GetSessionByID retrieves a single session by ID with its messages
 func (s *Store) GetSessionByID(id string) (*Session, []Message, error) {
 	var session Session
 	var title sql.NullString
@@ -366,7 +363,6 @@ func (s *Store) GetSessionByID(id string) (*Session, []Message, error) {
 	return &session, messages, nil
 }
 
-// GetMessages retrieves messages for a specific session
 func (s *Store) GetMessages(sessionID string) ([]Message, error) {
 	rows, err := s.db.Query(`
 		SELECT id, session_id, role, text_content, model,
@@ -420,10 +416,7 @@ func (s *Store) GetMessages(sessionID string) ([]Message, error) {
 	return messages, rows.Err()
 }
 
-// ExecuteQuery executes a read-only SQL query and returns results
-// Blocks all write operations for safety
 func (s *Store) ExecuteQuery(sql string) ([]QueryResult, error) {
-	// Check for write operations - comprehensive block list
 	writeKeywords := []string{
 		"INSERT", "UPDATE", "DELETE", "DROP", "CREATE", "ALTER", "TRUNCATE",
 		"REPLACE", "MERGE", "UPSERT", "ATTACH", "DETACH", "REINDEX", "VACUUM",
@@ -437,7 +430,6 @@ func (s *Store) ExecuteQuery(sql string) ([]QueryResult, error) {
 		}
 	}
 
-	// Only allow SELECT statements
 	if !strings.HasPrefix(upperSQL, "SELECT") && !strings.HasPrefix(upperSQL, "WITH") {
 		return nil, fmt.Errorf("only SELECT queries are allowed from the CLI")
 	}
@@ -455,8 +447,8 @@ func (s *Store) ExecuteQuery(sql string) ([]QueryResult, error) {
 
 	var results []QueryResult
 	for rows.Next() {
-		values := make([]interface{}, len(columns))
-		valuePtrs := make([]interface{}, len(columns))
+		values := make([]any, len(columns))
+		valuePtrs := make([]any, len(columns))
 		for i := range values {
 			valuePtrs[i] = &values[i]
 		}
@@ -483,9 +475,7 @@ func (s *Store) ExecuteQuery(sql string) ([]QueryResult, error) {
 	return results, rows.Err()
 }
 
-// GetTableSchema returns column information for a table
 func (s *Store) GetTableSchema(tableName string) ([]string, error) {
-	// Use PRAGMA to get table info - this is safe and read-only
 	rows, err := s.db.Query(fmt.Sprintf("PRAGMA table_info(%s)", tableName))
 	if err != nil {
 		return nil, err
@@ -510,7 +500,6 @@ func (s *Store) GetTableSchema(tableName string) ([]string, error) {
 	return columns, rows.Err()
 }
 
-// SuggestColumnNames returns similar column names for a given table
 func (s *Store) SuggestColumnNames(tableName string, input string) ([]string, error) {
 	columns, err := s.GetTableSchema(tableName)
 	if err != nil {
@@ -521,7 +510,6 @@ func (s *Store) SuggestColumnNames(tableName string, input string) ([]string, er
 	lowerInput := strings.ToLower(input)
 	for _, col := range columns {
 		lowerCol := strings.ToLower(col)
-		// Simple similarity: contains or edit distance would be better
 		if strings.Contains(lowerCol, lowerInput) || strings.Contains(lowerInput, lowerCol) {
 			suggestions = append(suggestions, col)
 		}

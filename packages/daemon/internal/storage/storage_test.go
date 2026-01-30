@@ -21,23 +21,19 @@ func TestEnsureDb(t *testing.T) {
 			t.Error("expected created to be true for new database")
 		}
 
-		// Verify file was created
 		if _, err := os.Stat(dbPath); os.IsNotExist(err) {
 			t.Error("expected database file to exist")
 		}
 
-		// Clean up
 		os.Remove(dbPath)
 	})
 
 	t.Run("returns false if DB already exists", func(t *testing.T) {
-		// First call - create the DB
 		_, err := EnsureDb(dbPath)
 		if err != nil {
 			t.Fatalf("expected no error creating DB, got %v", err)
 		}
 
-		// Second call - DB exists
 		created, err := EnsureDb(dbPath)
 		if err != nil {
 			t.Fatalf("expected no error, got %v", err)
@@ -56,12 +52,10 @@ func TestEnsureDb(t *testing.T) {
 			t.Fatalf("expected no error, got %v", err)
 		}
 
-		// Verify all directories were created
 		if _, err := os.Stat(filepath.Dir(nestedDbPath)); os.IsNotExist(err) {
 			t.Error("expected parent directories to be created")
 		}
 
-		// Verify file was created
 		if _, err := os.Stat(nestedDbPath); os.IsNotExist(err) {
 			t.Error("expected database file to exist")
 		}
@@ -72,13 +66,11 @@ func TestEnsureDbExists(t *testing.T) {
 	tmpDir := t.TempDir()
 	dbPath := filepath.Join(tmpDir, "existing.db")
 
-	// Create the database first
 	_, err := EnsureDb(dbPath)
 	if err != nil {
 		t.Fatalf("failed to create initial database: %v", err)
 	}
 
-	// Now call EnsureDb again
 	created, err := EnsureDb(dbPath)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
@@ -93,7 +85,6 @@ func TestOpen(t *testing.T) {
 	tmpDir := t.TempDir()
 	dbPath := filepath.Join(tmpDir, "open_test.db")
 
-	// Ensure DB exists first
 	_, err := EnsureDb(dbPath)
 	if err != nil {
 		t.Fatalf("failed to ensure DB: %v", err)
@@ -120,7 +111,6 @@ func TestOpen(t *testing.T) {
 		t.Error("expected store.upsertMessage to not be nil")
 	}
 
-	// Clean up
 	store.Close()
 }
 
@@ -128,7 +118,6 @@ func TestClose(t *testing.T) {
 	tmpDir := t.TempDir()
 	dbPath := filepath.Join(tmpDir, "close_test.db")
 
-	// Ensure DB exists and open it
 	_, err := EnsureDb(dbPath)
 	if err != nil {
 		t.Fatalf("failed to ensure DB: %v", err)
@@ -139,21 +128,17 @@ func TestClose(t *testing.T) {
 		t.Fatalf("failed to open database: %v", err)
 	}
 
-	// Close should succeed without error
 	err = store.Close()
 	if err != nil {
 		t.Errorf("expected no error closing database, got %v", err)
 	}
 
-	// Verify the prepared statements are closed by trying to use them
-	// (This would fail if not properly closed, but we can't easily test that here)
 }
 
 func TestStoreUpsertSession(t *testing.T) {
 	tmpDir := t.TempDir()
 	dbPath := filepath.Join(tmpDir, "upsert_session_test.db")
 
-	// Ensure DB exists and open it
 	_, err := EnsureDb(dbPath)
 	if err != nil {
 		t.Fatalf("failed to ensure DB: %v", err)
@@ -203,7 +188,6 @@ func TestStoreUpsertMessage(t *testing.T) {
 	tmpDir := t.TempDir()
 	dbPath := filepath.Join(tmpDir, "upsert_message_test.db")
 
-	// Ensure DB exists and open it
 	_, err := EnsureDb(dbPath)
 	if err != nil {
 		t.Fatalf("failed to ensure DB: %v", err)
@@ -215,7 +199,6 @@ func TestStoreUpsertMessage(t *testing.T) {
 	}
 	defer store.Close()
 
-	// First, create a session to reference
 	session := &Session{
 		ID: "msg-test-session",
 	}
