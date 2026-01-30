@@ -5,12 +5,11 @@ Complete roadmap of all clankers implementation plans - current and future.
 ## Current Implementation
 
 ### [Implementation Plan](implementation-plan.md)
-**Status**: Ready to start
-**Time**: 7-9 days
+**Status**: Phases 1-2 done, Phases 3-5 pending
 
 5-phase plan to implement CLI with config, queries, Turso web service, and sync:
-1. CLI config + daemon refactor (breaking change)
-2. Storage queries + query command
+1. ~~CLI config + daemon refactor (breaking change)~~ ✅
+2. ~~Storage queries + query command~~ ✅
 3. Web service foundation (Turso)
 4. Sync manager + integration
 5. Testing + polish

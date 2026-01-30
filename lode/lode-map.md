@@ -39,8 +39,6 @@
 - plans/
   - [plans/npm-packaging](plans/npm-packaging.md)
   - [plans/fix-data-gaps](plans/fix-data-gaps.md)
-  - [plans/fix-session-creation](plans/fix-session-creation.md)
-  - [plans/claude-plugin](plans/claude-plugin.md)
   - [plans/implementation-plan](plans/implementation-plan.md)
   - [plans/token-auth-phase-2](plans/token-auth-phase-2.md)
   - [plans/workos-auth-phase-3](plans/workos-auth-phase-3.md)
@@ -50,7 +48,6 @@
   - [plans/web-dashboard](plans/web-dashboard.md)
   - [plans/database-triggers-sync](plans/database-triggers-sync.md)
   - [plans/sync-optimization](plans/sync-optimization.md)
-  - [plans/unified-logging](plans/unified-logging.md)
 - claude/
   - [claude/plugin-system](claude/plugin-system.md)
   - [claude/data-mapping](claude/data-mapping.md)
