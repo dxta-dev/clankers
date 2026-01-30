@@ -2,6 +2,13 @@
 
 Phase-by-phase implementation of the centralized logging system.
 
+**Design Decisions:**
+- Daemon is sole authority for log level filtering
+- Fire-and-forget RPC calls (no response waiting)
+- Silent drop when daemon unreachable
+- Stderr fallback for daemon startup logging
+- Include `requestId` for correlation
+
 ## Phase 1: Daemon Infrastructure
 
 ### 1.1 Add Log Paths
@@ -29,21 +36,40 @@ Responsibilities:
 - Open/create log file for current day
 - Write JSON Lines entries
 - Handle daily rotation (create new file when date changes)
-- Level filtering (debug, info, warn, error)
+- Level filtering (debug, info, warn, error) - **daemon is sole authority**
 - Thread-safe writes (mutex or channel)
 
 Interface:
 ```go
-type Logger struct {
-    minLevel LogLevel
-    file *os.File
-    mu sync.Mutex
+type LogLevel string
+const (
+    Debug LogLevel = "debug"
+    Info  LogLevel = "info"
+    Warn  LogLevel = "warn"
+    Error LogLevel = "error"
+)
+
+type LogEntry struct {
+    Timestamp string                 `json:"timestamp"`
+    Level     LogLevel               `json:"level"`
+    Component string                 `json:"component"`
+    Message   string                 `json:"message"`
+    RequestID string                 `json:"requestId,omitempty"`
+    Context   map[string]interface{} `json:"context,omitempty"`
 }
 
-func New(minLevel string) (*Logger, error)
+type Logger struct {
+    minLevel LogLevel
+    file     *os.File
+    mu       sync.Mutex
+    logDir   string
+}
+
+func New(minLevel string, logDir string) (*Logger, error)
 func (l *Logger) Write(entry LogEntry) error
 func (l *Logger) Close() error
 func (l *Logger) RotateIfNeeded() error
+func (l *Logger) ShouldDrop(level LogLevel) bool
 ```
 
 ### 1.3 Cleanup Job
@@ -51,7 +77,15 @@ func (l *Logger) RotateIfNeeded() error
 
 - Scan log directory on startup
 - Remove files older than 30 days
+- Schedule daily cleanup (not just startup) using `time.Ticker`
 - Run in background goroutine
+
+```go
+func StartCleanupJob(logDir string, retentionDays int) chan<- struct{} {
+    // Returns stop channel
+    // Runs cleanup immediately, then every 24 hours
+}
+```
 
 ### 1.4 RPC Handler
 **File**: `packages/daemon/internal/rpc/rpc.go`
@@ -64,17 +98,38 @@ case "log.write":
 
 Handler logic:
 - Parse request
-- Filter by level
+- Filter by level (daemon is sole authority - drops entries below minLevel)
 - Write to log file
 - Return `{ ok: true }`
+
+**Note on fire-and-forget**: Clients may close connection immediately after sending. Handler should handle partial reads gracefully.
 
 ### 1.5 Daemon Integration
 **File**: `packages/daemon/internal/cli/daemon.go`
 
-- Initialize logger on startup
+- Initialize logger early (after data directory setup)
 - Wire logger into RPC handler
-- Use `--log-level` flag (currently unused)
+- Use `--log-level` flag (default: "info")
+- **Startup fallback**: Use `log.Printf()` (stderr) before logger is ready
 - Daemon logs to same file with component="daemon"
+
+```go
+type DaemonLogger struct {
+    fileLogger *logging.Logger
+}
+
+func (d *DaemonLogger) Infof(format string, v ...interface{}) {
+    if d.fileLogger != nil {
+        d.fileLogger.Write(logging.LogEntry{
+            Level:     logging.Info,
+            Component: "daemon",
+            Message:   fmt.Sprintf(format, v...),
+        })
+    } else {
+        log.Printf(format, v...) // stderr fallback
+    }
+}
+```
 
 ## Phase 2: Core Library Logger
 
@@ -87,24 +142,36 @@ export type LogLevel = "debug" | "info" | "warn" | "error";
 export interface LogEntry {
     level: LogLevel;
     message: string;
+    requestId?: string;  // Optional correlation ID
     context?: Record<string, unknown>;
 }
 
 export interface Logger {
-    debug(message: string, context?: Record<string, unknown>): void;
-    info(message: string, context?: Record<string, unknown>): void;
-    warn(message: string, context?: Record<string, unknown>): void;
-    error(message: string, context?: Record<string, unknown>): void;
+    debug(message: string, context?: Record<string, unknown>, requestId?: string): void;
+    info(message: string, context?: Record<string, unknown>, requestId?: string): void;
+    warn(message: string, context?: Record<string, unknown>, requestId?: string): void;
+    error(message: string, context?: Record<string, unknown>, requestId?: string): void;
 }
 ```
 
-### 2.2 Add RPC Method
+### 2.2 Add RPC Methods
 **File**: `packages/core/src/rpc-client.ts`
 
-Add to `createRpcClient`:
+Add two methods to `createRpcClient`:
+
 ```typescript
+// Standard async call (waits for response)
 async logWrite(entry: LogEntry): Promise<OkResult>
+
+// Fire-and-forget (no response waiting, for internal logger use)
+logWriteNotify(entry: LogEntry): void
 ```
+
+The `logWriteNotify` variant:
+- Creates socket, writes request, immediately closes
+- Does not wait for response
+- Silently drops on any error (daemon not running, write failure, etc.)
+- Used internally by the logger
 
 ### 2.3 Create Logger Factory
 **New File**: `packages/core/src/logger.ts`
@@ -112,17 +179,44 @@ async logWrite(entry: LogEntry): Promise<OkResult>
 ```typescript
 export interface LoggerOptions {
     component: string;
-    minLevel?: LogLevel;
+    // Note: No minLevel option - daemon controls filtering
 }
 
 export function createLogger(options: LoggerOptions): Logger
 ```
 
 Implementation:
-- Reads `CLANKERS_LOG_LEVEL` env var
-- Client-side level filtering (optimization)
-- Async RPC calls (fire-and-forget)
-- Includes component in envelope
+- **No client-side filtering** - sends all log levels to daemon
+- **Fire-and-forget RPC** - uses `logWriteNotify()` internally
+- **Silent drop** - if daemon unreachable, log is discarded without error
+- **Component** included in every entry
+- **Optional requestId** - can be passed for correlation
+
+```typescript
+export function createLogger(options: LoggerOptions): Logger {
+    const component = options.component;
+    
+    const sendLog = (level: LogLevel, message: string, context?: Record<string, unknown>, requestId?: string) => {
+        const entry: LogEntry = {
+            timestamp: new Date().toISOString(),
+            level,
+            component,
+            message,
+            requestId,
+            context
+        };
+        // Fire-and-forget, never throws
+        rpc.logWriteNotify(entry).catch(() => { /* silently drop */ });
+    };
+    
+    return {
+        debug: (msg, ctx, reqId) => sendLog("debug", msg, ctx, reqId),
+        info: (msg, ctx, reqId) => sendLog("info", msg, ctx, reqId),
+        warn: (msg, ctx, reqId) => sendLog("warn", msg, ctx, reqId),
+        error: (msg, ctx, reqId) => sendLog("error", msg, ctx, reqId),
+    };
+}
+```
 
 ### 2.4 Export from Index
 **File**: `packages/core/src/index.ts`
@@ -208,36 +302,53 @@ Wire the `--log-level` flag to the logger initialization.
 
 ## Testing Checklist
 
+### Daemon Infrastructure
 - [ ] Daemon creates log directory on startup
-- [ ] Daemon creates daily log file
-- [ ] RPC log.write stores entries
-- [ ] Level filtering works (debug entries dropped when level=info)
+- [ ] Daemon creates daily log file with correct naming (`clankers-YYYY-MM-DD.jsonl`)
+- [ ] Daemon writes startup logs to stderr before logger ready, then to file
+- [ ] RPC log.write stores entries correctly
+- [ ] **Fire-and-forget**: Handler works when client closes connection early
+- [ ] Level filtering works (debug entries dropped when level=info, others written)
 - [ ] Rotation happens at midnight (or on first write of new day)
-- [ ] Cleanup removes files >30 days old
-- [ ] OpenCode plugin logs appear in file
-- [ ] Claude plugin logs appear in file
-- [ ] Daemon's own logs appear in file
+- [ ] Cleanup removes files >30 days old on startup
+- [ ] Daily cleanup job runs every 24 hours
 - [ ] Concurrent writes don't corrupt file
-- [ ] CLANKERS_LOG_LEVEL env var works
-- [ ] CLANKERS_LOG_PATH env var works
+
+### Environment Variables
+- [ ] `CLANKERS_LOG_LEVEL` controls daemon filtering (debug/info/warn/error)
+- [ ] `CLANKERS_LOG_PATH` overrides default log directory
+
+### Core Library
+- [ ] `createLogger()` returns logger with correct component
+- [ ] **No client-side filtering**: All log levels sent regardless of env var
+- [ ] **Fire-and-forget**: `logWriteNotify()` doesn't wait for response
+- [ ] **Silent drop**: Logs discarded gracefully when daemon unreachable (no error thrown)
+- [ ] `requestId` included in entry when provided
+
+### Integration
+- [ ] OpenCode plugin logs appear in file with component="opencode-plugin"
+- [ ] Claude plugin logs appear in file with component="claude-plugin"
+- [ ] Daemon's own logs appear in file with component="daemon"
+- [ ] Log entries are valid JSON Lines (parseable with `jq`)
+- [ ] All components write to same file without corruption
 
 ## Files Modified
 
 | File | Change |
 |------|--------|
-| `packages/daemon/internal/paths/paths.go` | Add GetLogDir(), GetCurrentLogFile() |
-| `packages/daemon/internal/logging/logging.go` | New - core logging logic |
-| `packages/daemon/internal/logging/cleanup.go` | New - retention cleanup |
-| `packages/daemon/internal/rpc/rpc.go` | Add log.write handler |
-| `packages/daemon/internal/cli/daemon.go` | Initialize logger, wire to RPC |
-| `packages/core/src/types.ts` | Add LogLevel, LogEntry, Logger types |
-| `packages/core/src/rpc-client.ts` | Add logWrite() method |
-| `packages/core/src/logger.ts` | New - createLogger() implementation |
+| `packages/daemon/internal/paths/paths.go` | Add `GetLogDir()`, `GetCurrentLogFile()`, `GetLogPathEnv()` |
+| `packages/daemon/internal/logging/logging.go` | New - core logging logic with rotation |
+| `packages/daemon/internal/logging/cleanup.go` | New - retention cleanup with daily job |
+| `packages/daemon/internal/rpc/rpc.go` | Add `log.write` handler (handles fire-and-forget) |
+| `packages/daemon/internal/cli/daemon.go` | Initialize logger, wire to RPC, stderr fallback |
+| `packages/core/src/types.ts` | Add `LogLevel`, `LogEntry`, `Logger` types (with `requestId`) |
+| `packages/core/src/rpc-client.ts` | Add `logWrite()` and `logWriteNotify()` methods |
+| `packages/core/src/logger.ts` | New - `createLogger()` with fire-and-forget, silent drop |
 | `packages/core/src/index.ts` | Export logger |
-| `apps/opencode-plugin/src/index.ts` | Use new logger |
-| `apps/claude-code-plugin/src/index.ts` | Use new logger |
-| `packages/daemon/internal/cli/query.go` | Use logger |
-| `packages/daemon/internal/cli/config.go` | Use logger |
+| `apps/opencode-plugin/src/index.ts` | Replace `client.app.log()` with new logger |
+| `apps/claude-code-plugin/src/index.ts` | Replace `console.log()` with new logger |
+| `packages/daemon/internal/cli/query.go` | Use structured logger (optional) |
+| `packages/daemon/internal/cli/config.go` | Use structured logger (optional) |
 
 ## Rollback Plan
 
@@ -248,11 +359,15 @@ If issues arise:
 
 ## Success Criteria
 
-- All components write to same log file
-- Logs are structured JSON
-- Daily rotation works
-- 30-day retention works
-- No `client.app.log()` calls remain in OpenCode plugin
-- No `console.log()` calls remain in Claude plugin
-- CLI respects --log-level flag
-- Environment variables work for configuration
+- [ ] All components write to same log file (JSON Lines format)
+- [ ] Daily rotation works (new file each day)
+- [ ] 30-day retention works (cleanup on startup + daily job)
+- [ ] **Daemon is sole filtering authority** (clients send all levels)
+- [ ] **Fire-and-forget RPC** works (no blocking, no response waiting)
+- [ ] **Silent drop** when daemon unreachable (no plugin errors)
+- [ ] **Stderr fallback** for daemon startup before logger ready
+- [ ] `requestId` correlation works across components
+- [ ] No `client.app.log()` calls remain in OpenCode plugin
+- [ ] No `console.log()` calls remain in Claude plugin
+- [ ] CLI `--log-level` flag controls daemon filtering
+- [ ] `CLANKERS_LOG_LEVEL` and `CLANKERS_LOG_PATH` env vars work

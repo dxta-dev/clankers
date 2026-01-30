@@ -2,6 +2,12 @@
 
 Clankers uses a centralized, daemon-owned logging system where all components (plugins, CLI, daemon) write structured logs to the same destination via JSON-RPC.
 
+**Design Decisions (v1.1):**
+- Daemon is the sole authority for log level filtering (clients send all logs)
+- Fire-and-forget RPC calls (no response waiting, silent drop on failure)
+- Stderr fallback for daemon startup before log file is ready
+- Include `requestId` for traceability across components
+
 ## Architecture
 
 ```mermaid
@@ -54,6 +60,7 @@ flowchart TB
   "level": "debug",
   "component": "opencode-plugin",
   "message": "Event received",
+  "requestId": "req-42",
   "context": {
     "eventType": "session.created"
   }
@@ -66,11 +73,12 @@ flowchart TB
 | `level` | enum | One of: `debug`, `info`, `warn`, `error` |
 | `component` | string | Source: `daemon`, `opencode-plugin`, `claude-plugin`, `cursor-plugin`, `cli` |
 | `message` | string | Human-readable log message |
+| `requestId` | string | Optional correlation ID for tracing (e.g., RPC request ID) |
 | `context` | object | Optional structured data (arbitrary key-value pairs) |
 
 ## RPC Method
 
-New RPC method for log writing:
+New RPC method for log writing using **fire-and-forget** pattern:
 
 **Request:**
 ```json
@@ -84,6 +92,7 @@ New RPC method for log writing:
     "entry": {
       "level": "info",
       "message": "Connected to daemon",
+      "requestId": "req-42",
       "context": { "version": "0.1.0" }
     }
   }
@@ -96,9 +105,11 @@ New RPC method for log writing:
 ```
 
 **Characteristics:**
-- Async from plugin perspective (fire-and-forget, no waiting for response)
-- Level filtering happens in daemon (entries below threshold are silently dropped)
-- Component is derived from client name in envelope
+- **Fire-and-forget**: Plugin sends log and immediately closes connection, no waiting for response
+- **Silent drop on failure**: If daemon isn't running, logs are silently discarded (logging must not break plugins)
+- **Level filtering in daemon only**: Clients send all log levels; daemon filters based on `CLANKERS_LOG_LEVEL`
+- **Component derived from client name** in envelope
+- **`requestId` correlation**: Optional field for tracing related log entries across components
 
 ## TypeScript Logger API
 
@@ -108,8 +119,8 @@ The core library exposes a unified logger interface:
 import { createLogger } from "@dxta-dev/clankers-core";
 
 const logger = createLogger({
-  component: "opencode-plugin",
-  minLevel: "info", // Respects CLANKERS_LOG_LEVEL env var
+  component: "opencode-plugin"
+  // No minLevel option - daemon controls filtering
 });
 
 logger.debug("Detailed debugging info", { details: "..." });
@@ -120,9 +131,13 @@ logger.error("Failed to upsert", { message: "..." });
 
 ### Environment Variable Resolution
 
-1. `CLANKERS_LOG_LEVEL` - explicit override
-2. `process.env.LOG_LEVEL` - fallback (if set)
-3. Default: `info`
+Level filtering is controlled **only by the daemon** via environment variable:
+
+1. `CLANKERS_LOG_LEVEL` - controls what the daemon writes to file (default: `info`)
+2. Plugins always send all log levels via RPC
+3. Daemon filters entries below configured level (silent drop)
+
+This ensures a single source of truth for log verbosity.
 
 ## Storage Layout
 
@@ -145,14 +160,15 @@ logger.error("Failed to upsert", { message: "..." });
 - Implements `log.write` RPC handler
 - Filters entries below configured level
 - Handles daily rotation
-- Runs cleanup job on startup (remove >30 days)
+- Runs cleanup job on startup + daily (remove >30 days)
+- **Startup logging**: Uses `stderr` until structured logger initialized, then switches to log file
 - Uses same logger internally (component: `daemon`)
 
 ### Core Library (`@dxta-dev/clankers-core`)
-- Exports `createLogger()` function
-- Sends logs via `log.write` RPC
-- Respects `CLANKERS_LOG_LEVEL` env var
-- Provides level filtering client-side (optimization)
+- Exports `createLogger()` function (component name only, no level config)
+- Sends logs via `log.write` RPC using **fire-and-forget** pattern
+- **Silent drop**: If daemon unreachable, logs are discarded without error
+- No client-side filtering - sends all levels, lets daemon decide
 
 ### Plugins
 - OpenCode: Migrate from `client.app.log()` to new logger
@@ -174,11 +190,11 @@ logger.error("Failed to upsert", { message: "..." });
 
 ## Filtering
 
-Daemon filters entries below configured level:
+**Daemon-side filtering only.** The daemon filters entries below the configured level (via `--log-level` flag or `CLANKERS_LOG_LEVEL` env var):
 
 ```go
 // If level is "info", these are dropped:
-log.write({ level: "debug", ... })  // Dropped
+log.write({ level: "debug", ... })  // Dropped by daemon
 
 // These are written:
 log.write({ level: "info", ... })   // Written
@@ -186,13 +202,36 @@ log.write({ level: "warn", ... })   // Written
 log.write({ level: "error", ... })  // Written
 ```
 
-## Migration Path
+**Why no client-side filtering?**
+- Single source of truth: daemon controls what gets persisted
+- Prevents confusion about "why aren't my debug logs showing?"
+- Simpler client API (no level configuration needed)
 
-1. **Phase 1**: Implement daemon logging infrastructure
-2. **Phase 2**: Implement core logger API
-3. **Phase 3**: Migrate OpenCode plugin (remove `client.app.log()` calls)
-4. **Phase 4**: Migrate Claude plugin (remove `console.log()` calls)
-5. **Phase 5**: Update CLI to use logger
+## Implementation Phases
+
+1. **Phase 1: Daemon Infrastructure**
+   - Add `GetLogDir()` and `GetCurrentLogFile()` to paths package
+   - Create `internal/logging` package with rotation and filtering
+   - Add cleanup job (startup + daily)
+   - Implement `log.write` RPC handler with fire-and-forget support
+   - Wire logger into daemon with stderr fallback for startup
+
+2. **Phase 2: Core Logger API**
+   - Add log types (`LogLevel`, `LogEntry`, `Logger`) to `types.ts`
+   - Add `logWrite()` RPC method to client
+   - Create `logger.ts` with `createLogger()` (simplified: component only)
+   - Implement fire-and-forget with silent drop on failure
+
+3. **Phase 3: OpenCode Plugin Migration**
+   - Replace `client.app.log()` with new logger
+   - Remove `client` parameter from handlers (no longer needed)
+
+4. **Phase 4: Claude Plugin Migration**
+   - Replace `console.log()` with new logger
+
+5. **Phase 5: CLI Integration**
+   - Update commands to use logger where appropriate
+   - Keep stdout for command output, logs go to file
 
 ## Links
 
