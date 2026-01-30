@@ -50,8 +50,8 @@ Usage:
 	// Add subcommands
 	root.AddCommand(daemonCmd())
 	root.AddCommand(configCmd())
-	// TODO: Add query and sync commands in Phase 2-4
-	// root.AddCommand(queryCmd())
+	// TODO: Add sync command in Phase 4
+	root.AddCommand(queryCmd())
 	// root.AddCommand(syncCmd())
 
 	return root

@@ -3,6 +3,7 @@ package storage
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -255,6 +256,254 @@ func TestStoreUpsertMessage(t *testing.T) {
 			t.Fatalf("expected no error updating message, got %v", err)
 		}
 	})
+}
+
+func TestGetSessions(t *testing.T) {
+	store := createStore(t)
+
+	sessionOneCreatedAt := int64(100)
+	sessionTwoCreatedAt := int64(200)
+	if err := store.UpsertSession(&Session{
+		ID:        "session-1",
+		Title:     strPtr("First"),
+		CreatedAt: &sessionOneCreatedAt,
+	}); err != nil {
+		t.Fatalf("failed to create session: %v", err)
+	}
+	if err := store.UpsertSession(&Session{
+		ID:        "session-2",
+		Title:     strPtr("Second"),
+		CreatedAt: &sessionTwoCreatedAt,
+	}); err != nil {
+		t.Fatalf("failed to create session: %v", err)
+	}
+
+	t.Run("returns sessions ordered by created_at desc", func(t *testing.T) {
+		sessions, err := store.GetSessions(0)
+		if err != nil {
+			t.Fatalf("expected no error, got %v", err)
+		}
+		if len(sessions) != 2 {
+			t.Fatalf("expected 2 sessions, got %d", len(sessions))
+		}
+		if sessions[0].ID != "session-2" {
+			t.Errorf("expected session-2 first, got %s", sessions[0].ID)
+		}
+	})
+
+	t.Run("respects limit", func(t *testing.T) {
+		sessions, err := store.GetSessions(1)
+		if err != nil {
+			t.Fatalf("expected no error, got %v", err)
+		}
+		if len(sessions) != 1 {
+			t.Fatalf("expected 1 session, got %d", len(sessions))
+		}
+		if sessions[0].ID != "session-2" {
+			t.Errorf("expected session-2 first, got %s", sessions[0].ID)
+		}
+	})
+}
+
+func TestGetSessionByID(t *testing.T) {
+	store := createStore(t)
+
+	createdAt := int64(300)
+	if err := store.UpsertSession(&Session{
+		ID:        "session-abc",
+		Title:     strPtr("Find Me"),
+		CreatedAt: &createdAt,
+	}); err != nil {
+		t.Fatalf("failed to create session: %v", err)
+	}
+
+	messageCreatedAt := int64(301)
+	if err := store.UpsertMessage(&Message{
+		ID:          "msg-abc",
+		SessionID:   "session-abc",
+		Role:        "assistant",
+		TextContent: "Hello",
+		CreatedAt:   &messageCreatedAt,
+	}); err != nil {
+		t.Fatalf("failed to create message: %v", err)
+	}
+
+	t.Run("returns session and messages", func(t *testing.T) {
+		session, messages, err := store.GetSessionByID("session-abc")
+		if err != nil {
+			t.Fatalf("expected no error, got %v", err)
+		}
+		if session == nil || session.ID != "session-abc" {
+			t.Fatalf("expected session-abc, got %+v", session)
+		}
+		if len(messages) != 1 {
+			t.Fatalf("expected 1 message, got %d", len(messages))
+		}
+		if messages[0].ID != "msg-abc" {
+			t.Errorf("expected msg-abc, got %s", messages[0].ID)
+		}
+	})
+
+	t.Run("returns error when missing", func(t *testing.T) {
+		_, _, err := store.GetSessionByID("missing-session")
+		if err == nil {
+			t.Fatal("expected error for missing session")
+		}
+		if !strings.Contains(err.Error(), "session not found") {
+			t.Fatalf("expected not found error, got %v", err)
+		}
+	})
+}
+
+func TestGetMessages(t *testing.T) {
+	store := createStore(t)
+
+	if err := store.UpsertSession(&Session{ID: "session-msgs"}); err != nil {
+		t.Fatalf("failed to create session: %v", err)
+	}
+
+	firstCreated := int64(10)
+	secondCreated := int64(20)
+	if err := store.UpsertMessage(&Message{
+		ID:          "msg-1",
+		SessionID:   "session-msgs",
+		Role:        "user",
+		TextContent: "First",
+		CreatedAt:   &firstCreated,
+	}); err != nil {
+		t.Fatalf("failed to create message: %v", err)
+	}
+	if err := store.UpsertMessage(&Message{
+		ID:          "msg-2",
+		SessionID:   "session-msgs",
+		Role:        "assistant",
+		TextContent: "Second",
+		CreatedAt:   &secondCreated,
+	}); err != nil {
+		t.Fatalf("failed to create message: %v", err)
+	}
+
+	messages, err := store.GetMessages("session-msgs")
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if len(messages) != 2 {
+		t.Fatalf("expected 2 messages, got %d", len(messages))
+	}
+	if messages[0].ID != "msg-1" || messages[1].ID != "msg-2" {
+		t.Fatalf("expected messages ordered by created_at asc")
+	}
+}
+
+func TestExecuteQuery(t *testing.T) {
+	store := createStore(t)
+
+	createdAt := int64(400)
+	if err := store.UpsertSession(&Session{
+		ID:        "session-query",
+		Title:     strPtr("Query Me"),
+		CreatedAt: &createdAt,
+	}); err != nil {
+		t.Fatalf("failed to create session: %v", err)
+	}
+
+	results, err := store.ExecuteQuery("SELECT id, title FROM sessions WHERE id = 'session-query'")
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if len(results) != 1 {
+		t.Fatalf("expected 1 result, got %d", len(results))
+	}
+	if results[0]["id"] != "session-query" {
+		t.Errorf("expected id session-query, got %v", results[0]["id"])
+	}
+	if results[0]["title"] != "Query Me" {
+		t.Errorf("expected title Query Me, got %v", results[0]["title"])
+	}
+}
+
+func TestExecuteQueryBlocksWrites(t *testing.T) {
+	store := createStore(t)
+
+	keywords := []string{
+		"INSERT", "UPDATE", "DELETE", "DROP", "CREATE", "ALTER", "TRUNCATE",
+		"REPLACE", "MERGE", "UPSERT", "ATTACH", "DETACH", "REINDEX", "VACUUM",
+		"PRAGMA", "BEGIN", "COMMIT", "ROLLBACK", "SAVEPOINT", "RELEASE",
+	}
+
+	for _, keyword := range keywords {
+		_, err := store.ExecuteQuery(keyword + " sessions")
+		if err == nil {
+			t.Fatalf("expected error for %s", keyword)
+		}
+		if !strings.Contains(err.Error(), keyword) {
+			t.Fatalf("expected error to mention %s, got %v", keyword, err)
+		}
+	}
+}
+
+func TestGetTableSchema(t *testing.T) {
+	store := createStore(t)
+
+	columns, err := store.GetTableSchema("sessions")
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if len(columns) == 0 {
+		t.Fatal("expected columns to be returned")
+	}
+
+	columnSet := make(map[string]bool)
+	for _, col := range columns {
+		columnSet[col] = true
+	}
+
+	for _, col := range []string{"id", "title", "project_path", "created_at"} {
+		if !columnSet[col] {
+			t.Fatalf("expected column %s to exist", col)
+		}
+	}
+}
+
+func TestSuggestColumnNames(t *testing.T) {
+	store := createStore(t)
+
+	suggestions, err := store.SuggestColumnNames("sessions", "proj")
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	suggestionSet := make(map[string]bool)
+	for _, suggestion := range suggestions {
+		suggestionSet[suggestion] = true
+	}
+
+	if !suggestionSet["project_path"] || !suggestionSet["project_name"] {
+		t.Fatalf("expected project_path and project_name suggestions, got %v", suggestions)
+	}
+}
+
+func createStore(t *testing.T) *Store {
+	t.Helper()
+
+	tmpDir := t.TempDir()
+	dbPath := filepath.Join(tmpDir, "query_test.db")
+
+	_, err := EnsureDb(dbPath)
+	if err != nil {
+		t.Fatalf("failed to ensure DB: %v", err)
+	}
+
+	store, err := Open(dbPath)
+	if err != nil {
+		t.Fatalf("failed to open database: %v", err)
+	}
+
+	t.Cleanup(func() {
+		store.Close()
+	})
+
+	return store
 }
 
 // Helper functions

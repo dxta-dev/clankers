@@ -10,7 +10,7 @@ The clankers CLI provides both daemon mode and interactive commands for local da
 | CLI Structure (cobra) | ✅ Complete | `internal/cli/root.go`, `internal/cli/config.go`, `internal/cli/daemon.go` |
 | Config Commands | ✅ Complete | `config set`, `config get`, `config list`, `config profiles` |
 | Daemon Command | ✅ Complete | `clankers daemon` with all flags |
-| Query Command | ⏳ Future | Phase 2 |
+| Query Command | ✅ Complete | `internal/cli/query.go` |
 | Sync Command | ⏳ Future | Phase 4 |
 
 ## Commands
@@ -160,11 +160,12 @@ clankers query "SELECT * FROM sessions LIMIT 10"
 # JSON output
 clankers query "SELECT * FROM messages" --format json
 
-# Write operation (requires flag)
-clankers query "UPDATE sessions SET title = 'X' WHERE id = 'y'" --write
+# Write operations are blocked
+clankers query "DELETE FROM sessions"
 ```
 
 **Output formats**: `table` (default), `json`
+**Write support**: not supported (no `--write` flag)
 
 ## Output Formats
 

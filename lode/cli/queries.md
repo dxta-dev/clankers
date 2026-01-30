@@ -1,6 +1,6 @@
 # CLI Queries
 
-The clankers CLI provides SQL query capabilities against the local SQLite database for debugging, analysis, and data exploration.
+The clankers CLI provides read-only SQL query capabilities against the local SQLite database for debugging, analysis, and data exploration.
 
 ## Query Command
 
@@ -13,45 +13,39 @@ clankers query "SELECT id, title, model FROM sessions" --format table
 
 # Output as JSON
 clankers query "SELECT * FROM messages" --format json
-
-# Output as CSV
-clankers query "SELECT * FROM sessions" --format csv
-
-# Interactive mode (future)
-clankers query --interactive
 ```
 
 ## Safety Controls
 
-To prevent accidental data loss, the query command has built-in safeguards:
+The query command is read-only. It blocks write operations and only allows SELECT or WITH statements. `--write` is not supported and will not be added.
 
-### Read-Only by Default
+### Read-Only Guard
 
-By default, only SELECT statements are allowed. Attempting to run INSERT/UPDATE/DELETE will error:
+Blocked keywords include:
+- INSERT, UPDATE, DELETE, DROP, CREATE, ALTER, TRUNCATE
+- REPLACE, MERGE, UPSERT
+- ATTACH, DETACH, REINDEX, VACUUM
+- PRAGMA, BEGIN, COMMIT, ROLLBACK, SAVEPOINT, RELEASE
+
+Example error:
 
 ```bash
 $ clankers query "DELETE FROM sessions"
-Error: Write operations require --write flag
+Error: write operations are not allowed from the CLI: DELETE statements are blocked
 ```
 
-### Explicit Write Mode
+### Error Guidance
 
-To enable write operations:
-
-```bash
-clankers query "UPDATE sessions SET title = 'New Title' WHERE id = '...'" --write
-```
-
-### Schema-Aware Validation
-
-The query validator ensures:
-- Table names exist in schema
-- Column names are valid (when determinable)
-- No dangerous operations like DROP TABLE without --force
+When SQLite returns a column/table/syntax error, the CLI provides suggestions:
+- Missing column: lists available columns and suggests similar names.
+- Missing table: lists available tables (`sessions`, `messages`).
+- Syntax errors: hints for common typos (selec/fromm/wher).
 
 ## Output Formats
 
 ### Table (default)
+
+Columns are capped at 50 characters; long values are truncated with `...`.
 
 ```
 ┌─────────────────┬──────────────────────┬─────────────┐
@@ -74,21 +68,14 @@ The query validator ensures:
 ]
 ```
 
-### CSV
-
-```csv
-id,title,created_at
-session-001,API Design,2026-01-29T10:30:00Z
-```
-
 ## Common Queries
 
 ### List recent sessions
 
 ```bash
-clankers query "SELECT id, title, model, provider, created_at 
-FROM sessions 
-ORDER BY created_at DESC 
+clankers query "SELECT id, title, model, provider, created_at
+FROM sessions
+ORDER BY created_at DESC
 LIMIT 20"
 ```
 
@@ -105,7 +92,7 @@ ORDER BY message_count DESC"
 ### Token usage analysis
 
 ```bash
-clankers query "SELECT 
+clankers query "SELECT
   model,
   SUM(prompt_tokens) as total_prompt,
   SUM(completion_tokens) as total_completion,
@@ -123,20 +110,12 @@ JOIN sessions s ON m.session_id = s.id
 WHERE m.text_content LIKE '%error%'"
 ```
 
-## Query from File
-
-For complex queries, use file input:
-
-```bash
-clankers query --file analysis.sql
+Diagram
+```mermaid
+flowchart LR
+  Query[clankers query] --> Store[storage.Store]
+  Store --> SQLite[(clankers.db)]
+  Query --> Formatters[formatters]
 ```
 
-## Schema Introspection
-
-View database schema:
-
-```bash
-clankers query --schema
-```
-
-Links: [cli architecture](architecture.md), [storage](../storage/sqlite.md)
+Links: [cli architecture](architecture.md), [storage](../storage/sqlite.md), [test catalog](test-catalog.md)

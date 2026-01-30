@@ -5,12 +5,12 @@ Plugin Status:
 - ✅ Claude Code Plugin: Complete (shell-based hooks via `hooks.json` + `runner.mjs` bridge to TypeScript)
 - ❌ Cursor Plugin: Not implemented (placeholder exists)
 
-CLI / Daemon Status (Phase 1):
+CLI / Daemon Status (Phase 1-2):
 - ✅ Config System: Profile-based config with `internal/config/` package
 - ✅ CLI Structure: Cobra-based commands with breaking change (explicit `clankers daemon` required)
 - ✅ Config Commands: `config set/get/list/profiles` implemented
 - ✅ Daemon Command: `clankers daemon` with flags (`--socket`, `--data-root`, `--db-path`, `--log-level`)
-- ⏳ Query Command: Future (Phase 2)
+- ✅ Query Command: Read-only SQL (`clankers query`, table/json output)
 - ⏳ Sync Command: Future (Phase 4)
 
 Links: [terminology](terminology.md), [practices](practices.md), [schemas](data-model/schemas.md), [opencode/plugins](opencode/plugins.md), [claude/plugin-system](claude/plugin-system.md), [event-handling](opencode/event-handling.md), [sqlite](storage/sqlite.md), [paths](storage/paths.md), [aggregation](ingestion/aggregation.md), [daemon](daemon/architecture.md), [cli/architecture](cli/architecture.md), [cli/config-system](cli/config-system.md)

@@ -2,12 +2,13 @@
 
 **Generated:** 2026-01-30  
 **Updated:** 2026-01-30  
-**Scope:** Phase 1 CLI Implementation (Steps 1-7)
+**Scope:** Phase 1 CLI Implementation + Phase 2 Query Command
 
 ## Implementation Status
 
-✅ **All Go Unit Tests Complete** - 25 tests implemented across config, paths, and storage packages.  
-✅ **Nix Flake Check Integrated** - Run `nix flake check` to execute all Go unit tests.
+✅ **Phase 1 Go Unit Tests Complete** - 25 tests implemented across config, paths, and storage packages.  
+✅ **Nix Flake Check Integrated** - Run `nix flake check` to execute all Go unit tests.  
+✅ **Phase 2 Query Tests Implemented** - Storage query + formatter tests added.
 
 ### Running Tests
 
@@ -42,6 +43,19 @@ The following tests were manually executed to validate the CLI implementation:
 | TC-010 | Daemon starts, listens, graceful shutdown | Integration | ✅ Yes |
 | TC-011 | Daemon respects custom `--data-root` flag | Integration | ✅ Yes |
 | TC-012 | Global `--config` flag is respected | Integration | ✅ Yes |
+
+---
+
+## Planned Manual Tests (Phase 2 Query Command)
+
+| ID | Test Description | Type | Automatable |
+|----|-----------------|------|-------------|
+| TC-020 | `query` returns table output for basic SELECT | Integration | ✅ Yes |
+| TC-021 | `query --format json` outputs valid JSON | Integration | ✅ Yes |
+| TC-022 | `query` blocks INSERT/UPDATE/DELETE | Integration | ✅ Yes |
+| TC-023 | `query` returns friendly column suggestions | Integration | ❌ No |
+| TC-024 | `query` returns table list on missing table | Integration | ❌ No |
+| TC-025 | `query` returns typo hints for bad SQL | Integration | ❌ No |
 
 ---
 
@@ -86,6 +100,22 @@ Unit tests in `packages/daemon/internal/storage/storage_test.go`:
 | `TestClose` | Closes database without error | Medium | ✅ Done |
 | `TestStoreUpsertSession` | UpsertSession inserts/updates sessions | High | ✅ Done |
 | `TestStoreUpsertMessage` | UpsertMessage inserts/updates messages | High | ✅ Done |
+| `TestGetSessions` | Returns sessions with optional limit | High | ✅ Done |
+| `TestGetSessionByID` | Returns session with messages or not found | High | ✅ Done |
+| `TestGetMessages` | Returns messages for a session | Medium | ✅ Done |
+| `TestExecuteQuery` | Runs SELECT and returns results | High | ✅ Done |
+| `TestExecuteQueryBlocksWrites` | Blocks write keywords | High | ✅ Done |
+| `TestGetTableSchema` | Returns PRAGMA table_info columns | Medium | ✅ Done |
+| `TestSuggestColumnNames` | Suggests similar columns | Low | ✅ Done |
+
+Unit tests in `packages/daemon/internal/formatters/formatters_test.go`:
+
+| Test Name | Description | Priority | Status |
+|-----------|-------------|----------|--------|
+| `TestTableFormatter` | Formats table output with truncation | High | ✅ Done |
+| `TestTableFormatterEmpty` | Handles empty results cleanly | Medium | ✅ Done |
+| `TestJSONFormatter` | Outputs pretty JSON | Medium | ✅ Done |
+| `TestNewFormatter` | Errors on unknown format | High | ✅ Done |
 
 ---
 
@@ -142,10 +172,11 @@ pkgs.runCommand "clankers-cli-integration" {}
 |-----------|-----------|-------------------|-------|
 | config | 15 | 5 | 20 |
 | paths | 4 | 0 | 4 |
-| storage | 6 | 0 | 6 |
-| cli/commands | 0 | 12 | 12 |
+| storage | 13 | 0 | 13 |
+| formatters | 4 | 0 | 4 |
+| cli/commands | 0 | 18 | 18 |
 | daemon | 0 | 3 | 3 |
-| **Total** | **25** | **20** | **45** |
+| **Total** | **36** | **26** | **62** |
 
 *Note: Added 3 bonus tests - `TestApplyEnvOverridesInvalidBool`, `TestStoreUpsertSession`, `TestStoreUpsertMessage`*
 
@@ -167,10 +198,10 @@ pkgs.runCommand "clankers-cli-integration" {}
 4. `test-config-custom-path`
 5. `test-daemon-startup`
 
-### Phase 2: Remaining Unit Tests ✅ DONE
-- ~~All storage tests~~ ✅ (6 tests implemented)
-- ~~All paths tests~~ ✅ (4 tests implemented)  
-- ~~Remaining config tests~~ ✅ (15 tests implemented)
+### Phase 2: Query Command Tests ✅ Done (unit tests only)
+- Storage query helpers (7 tests)
+- Formatter package (4 tests)
+- Query command manual test sweep (6 cases) ⏳ Pending
 
 ### Phase 3: Extended Integration Tests
 - Cross-platform builds
@@ -186,6 +217,14 @@ pkgs.runCommand "clankers-cli-integration" {}
 - Integration tests should run in isolated environments (Nix sandbox)
 - Config tests should not depend on actual `$HOME` or XDG paths
 - Daemon tests need to handle process lifecycle properly
+
+Diagram
+```mermaid
+flowchart LR
+  QueryCmd[clankers query] --> Storage[storage queries]
+  QueryCmd --> Formatters[formatters]
+  Storage --> SQLite[(clankers.db)]
+```
 
 ---
 
