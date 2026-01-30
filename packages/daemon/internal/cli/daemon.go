@@ -27,7 +27,8 @@ func (f *filteredLogWriter) Write(p []byte) (n int, err error) {
 	s := string(p)
 	if strings.Contains(s, "connection reset by peer") ||
 		strings.Contains(s, "broken pipe") ||
-		strings.Contains(s, "use of closed network connection") {
+		strings.Contains(s, "use of closed network connection") ||
+		strings.Contains(s, "jsonrpc2: protocol error") && strings.Contains(s, "read unix") {
 		return len(p), nil
 	}
 	return f.w.Write(p)

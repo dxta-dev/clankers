@@ -133,55 +133,56 @@ async function rpcCall<T>(method: string, params?: unknown): Promise<T> {
 			socket.write(message);
 		});
 
-		socket.on("data", (chunk: Buffer) => {
-			buffer = Buffer.concat([buffer, chunk]);
+			socket.on("data", (chunk: Buffer) => {
+				buffer = Buffer.concat([buffer, chunk]);
 
-			while (true) {
-				if (expectedLength === null) {
-					const headerEnd = buffer.indexOf("\r\n\r\n");
-					if (headerEnd === -1) break;
+				while (true) {
+					if (expectedLength === null) {
+						const headerEnd = buffer.indexOf("\r\n\r\n");
+						if (headerEnd === -1) break;
 
-					const header = buffer.subarray(0, headerEnd).toString("utf8");
-					if (!header.startsWith(CONTENT_LENGTH_HEADER)) {
-						socket.destroy();
-						reject(new Error("Invalid response: missing Content-Length header"));
-						return;
-					}
+						const header = buffer.subarray(0, headerEnd).toString("utf8");
+						if (!header.startsWith(CONTENT_LENGTH_HEADER)) {
+							socket.destroy();
+							reject(new Error("Invalid response: missing Content-Length header"));
+							return;
+						}
 
-					expectedLength = Number.parseInt(
-						header.slice(CONTENT_LENGTH_HEADER.length),
-						10
-					);
-					buffer = Buffer.from(buffer.subarray(headerEnd + 4));
-				}
-
-				if (buffer.length < expectedLength) break;
-
-				const body = buffer.subarray(0, expectedLength).toString("utf8");
-				buffer = Buffer.from(buffer.subarray(expectedLength));
-				expectedLength = null;
-
-				try {
-					const response: RpcResponse<T> = JSON.parse(body);
-					socket.end();
-
-					if (response.error) {
-						reject(
-							new Error(
-								`RPC error ${response.error.code}: ${response.error.message}`
-							)
+						expectedLength = Number.parseInt(
+							header.slice(CONTENT_LENGTH_HEADER.length),
+							10
 						);
-						return;
+						buffer = Buffer.from(buffer.subarray(headerEnd + 4));
 					}
 
-					resolve(response.result as T);
-				} catch (err) {
-					socket.destroy();
-					reject(err);
-					return;
+					if (buffer.length < expectedLength) break;
+
+					const body = buffer.subarray(0, expectedLength).toString("utf8");
+					buffer = Buffer.from(buffer.subarray(expectedLength));
+					expectedLength = null;
+
+					try {
+						const response: RpcResponse<T> = JSON.parse(body);
+
+						if (response.error) {
+							socket.end();
+							reject(
+								new Error(
+									`RPC error ${response.error.code}: ${response.error.message}`
+								)
+							);
+							return;
+						}
+
+						resolve(response.result as T);
+						socket.end();
+					} catch (err) {
+						socket.destroy();
+						reject(err);
+						return;
+					}
 				}
-			}
-		});
+			});
 
 		socket.on("error", (err) => {
 			reject(new Error(`Socket error: ${err.message}`));
