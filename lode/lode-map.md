@@ -19,6 +19,13 @@
 - daemon/
   - [daemon/architecture](daemon/architecture.md)
   - [daemon/install](daemon/install.md)
+- cli/
+  - [cli/architecture](cli/architecture.md)
+  - [cli/auth](cli/auth.md)
+  - [cli/queries](cli/queries.md)
+  - [cli/sync](cli/sync.md)
+- web-service/
+  - [web-service/overview](web-service/overview.md)
 - build/
   - [build/overview](build/overview.md)
   - [build/testing](build/testing.md)
@@ -26,6 +33,15 @@
   - [plans/npm-packaging](plans/npm-packaging.md)
   - [plans/fix-session-creation](plans/fix-session-creation.md)
   - [plans/claude-plugin](plans/claude-plugin.md)
+  - [plans/implementation-plan](plans/implementation-plan.md)
+  - [plans/token-auth-phase-2](plans/token-auth-phase-2.md)
+  - [plans/workos-auth-phase-3](plans/workos-auth-phase-3.md)
+  - [plans/interactive-query](plans/interactive-query.md)
+  - [plans/additional-output-formats](plans/additional-output-formats.md)
+  - [plans/write-operations](plans/write-operations.md)
+  - [plans/web-dashboard](plans/web-dashboard.md)
+  - [plans/database-triggers-sync](plans/database-triggers-sync.md)
+  - [plans/sync-optimization](plans/sync-optimization.md)
 - claude/
   - [claude/plugin-system](claude/plugin-system.md)
 - release/
