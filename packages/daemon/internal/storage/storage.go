@@ -2,8 +2,10 @@ package storage
 
 import (
 	"database/sql"
+	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	_ "modernc.org/sqlite"
 )
@@ -106,6 +108,9 @@ type Message struct {
 	CreatedAt        *int64  `json:"createdAt,omitempty"`
 	CompletedAt      *int64  `json:"completedAt,omitempty"`
 }
+
+// QueryResult represents a row from a raw SQL query
+type QueryResult map[string]interface{}
 
 func EnsureDb(dbPath string) (bool, error) {
 	dir := filepath.Dir(dbPath)
@@ -218,4 +223,309 @@ func (s *Store) UpsertMessage(msg *Message) error {
 		msg.CompletedAt,
 	)
 	return err
+}
+
+// GetSessions retrieves sessions with optional limit
+func (s *Store) GetSessions(limit int) ([]Session, error) {
+	query := `SELECT id, title, project_path, project_name, model, provider,
+		prompt_tokens, completion_tokens, cost, created_at, updated_at
+		FROM sessions ORDER BY created_at DESC`
+	if limit > 0 {
+		query += fmt.Sprintf(" LIMIT %d", limit)
+	}
+
+	rows, err := s.db.Query(query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var sessions []Session
+	for rows.Next() {
+		var s Session
+		var title sql.NullString
+		var projectPath sql.NullString
+		var projectName sql.NullString
+		var model sql.NullString
+		var provider sql.NullString
+		var promptTokens sql.NullInt64
+		var completionTokens sql.NullInt64
+		var cost sql.NullFloat64
+		var createdAt sql.NullInt64
+		var updatedAt sql.NullInt64
+
+		err := rows.Scan(
+			&s.ID, &title, &projectPath, &projectName, &model, &provider,
+			&promptTokens, &completionTokens, &cost, &createdAt, &updatedAt,
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		if title.Valid {
+			s.Title = &title.String
+		}
+		if projectPath.Valid {
+			s.ProjectPath = &projectPath.String
+		}
+		if projectName.Valid {
+			s.ProjectName = &projectName.String
+		}
+		if model.Valid {
+			s.Model = &model.String
+		}
+		if provider.Valid {
+			s.Provider = &provider.String
+		}
+		if promptTokens.Valid {
+			s.PromptTokens = &promptTokens.Int64
+		}
+		if completionTokens.Valid {
+			s.CompletionTokens = &completionTokens.Int64
+		}
+		if cost.Valid {
+			s.Cost = &cost.Float64
+		}
+		if createdAt.Valid {
+			s.CreatedAt = &createdAt.Int64
+		}
+		if updatedAt.Valid {
+			s.UpdatedAt = &updatedAt.Int64
+		}
+
+		sessions = append(sessions, s)
+	}
+
+	return sessions, rows.Err()
+}
+
+// GetSessionByID retrieves a single session by ID with its messages
+func (s *Store) GetSessionByID(id string) (*Session, []Message, error) {
+	var session Session
+	var title sql.NullString
+	var projectPath sql.NullString
+	var projectName sql.NullString
+	var model sql.NullString
+	var provider sql.NullString
+	var promptTokens sql.NullInt64
+	var completionTokens sql.NullInt64
+	var cost sql.NullFloat64
+	var createdAt sql.NullInt64
+	var updatedAt sql.NullInt64
+
+	err := s.db.QueryRow(`
+		SELECT id, title, project_path, project_name, model, provider,
+			prompt_tokens, completion_tokens, cost, created_at, updated_at
+		FROM sessions WHERE id = ?`, id).Scan(
+		&session.ID, &title, &projectPath, &projectName, &model, &provider,
+		&promptTokens, &completionTokens, &cost, &createdAt, &updatedAt,
+	)
+	if err == sql.ErrNoRows {
+		return nil, nil, fmt.Errorf("session not found: %s", id)
+	}
+	if err != nil {
+		return nil, nil, err
+	}
+
+	if title.Valid {
+		session.Title = &title.String
+	}
+	if projectPath.Valid {
+		session.ProjectPath = &projectPath.String
+	}
+	if projectName.Valid {
+		session.ProjectName = &projectName.String
+	}
+	if model.Valid {
+		session.Model = &model.String
+	}
+	if provider.Valid {
+		session.Provider = &provider.String
+	}
+	if promptTokens.Valid {
+		session.PromptTokens = &promptTokens.Int64
+	}
+	if completionTokens.Valid {
+		session.CompletionTokens = &completionTokens.Int64
+	}
+	if cost.Valid {
+		session.Cost = &cost.Float64
+	}
+	if createdAt.Valid {
+		session.CreatedAt = &createdAt.Int64
+	}
+	if updatedAt.Valid {
+		session.UpdatedAt = &updatedAt.Int64
+	}
+
+	messages, err := s.GetMessages(id)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return &session, messages, nil
+}
+
+// GetMessages retrieves messages for a specific session
+func (s *Store) GetMessages(sessionID string) ([]Message, error) {
+	rows, err := s.db.Query(`
+		SELECT id, session_id, role, text_content, model,
+			prompt_tokens, completion_tokens, duration_ms, created_at, completed_at
+		FROM messages WHERE session_id = ? ORDER BY created_at ASC`, sessionID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var messages []Message
+	for rows.Next() {
+		var m Message
+		var model sql.NullString
+		var promptTokens sql.NullInt64
+		var completionTokens sql.NullInt64
+		var durationMs sql.NullInt64
+		var createdAt sql.NullInt64
+		var completedAt sql.NullInt64
+
+		err := rows.Scan(
+			&m.ID, &m.SessionID, &m.Role, &m.TextContent, &model,
+			&promptTokens, &completionTokens, &durationMs, &createdAt, &completedAt,
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		if model.Valid {
+			m.Model = &model.String
+		}
+		if promptTokens.Valid {
+			m.PromptTokens = &promptTokens.Int64
+		}
+		if completionTokens.Valid {
+			m.CompletionTokens = &completionTokens.Int64
+		}
+		if durationMs.Valid {
+			m.DurationMs = &durationMs.Int64
+		}
+		if createdAt.Valid {
+			m.CreatedAt = &createdAt.Int64
+		}
+		if completedAt.Valid {
+			m.CompletedAt = &completedAt.Int64
+		}
+
+		messages = append(messages, m)
+	}
+
+	return messages, rows.Err()
+}
+
+// ExecuteQuery executes a read-only SQL query and returns results
+// Blocks all write operations for safety
+func (s *Store) ExecuteQuery(sql string) ([]QueryResult, error) {
+	// Check for write operations - comprehensive block list
+	writeKeywords := []string{
+		"INSERT", "UPDATE", "DELETE", "DROP", "CREATE", "ALTER", "TRUNCATE",
+		"REPLACE", "MERGE", "UPSERT", "ATTACH", "DETACH", "REINDEX", "VACUUM",
+		"PRAGMA", "BEGIN", "COMMIT", "ROLLBACK", "SAVEPOINT", "RELEASE",
+	}
+
+	upperSQL := strings.ToUpper(strings.TrimSpace(sql))
+	for _, keyword := range writeKeywords {
+		if strings.HasPrefix(upperSQL, keyword) || strings.Contains(upperSQL, " "+keyword+" ") {
+			return nil, fmt.Errorf("write operations are not allowed from the CLI: %s statements are blocked", keyword)
+		}
+	}
+
+	// Only allow SELECT statements
+	if !strings.HasPrefix(upperSQL, "SELECT") && !strings.HasPrefix(upperSQL, "WITH") {
+		return nil, fmt.Errorf("only SELECT queries are allowed from the CLI")
+	}
+
+	rows, err := s.db.Query(sql)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	columns, err := rows.Columns()
+	if err != nil {
+		return nil, err
+	}
+
+	var results []QueryResult
+	for rows.Next() {
+		values := make([]interface{}, len(columns))
+		valuePtrs := make([]interface{}, len(columns))
+		for i := range values {
+			valuePtrs[i] = &values[i]
+		}
+
+		if err := rows.Scan(valuePtrs...); err != nil {
+			return nil, err
+		}
+
+		row := make(QueryResult)
+		for i, col := range columns {
+			val := values[i]
+			switch v := val.(type) {
+			case []byte:
+				row[col] = string(v)
+			case nil:
+				row[col] = nil
+			default:
+				row[col] = v
+			}
+		}
+		results = append(results, row)
+	}
+
+	return results, rows.Err()
+}
+
+// GetTableSchema returns column information for a table
+func (s *Store) GetTableSchema(tableName string) ([]string, error) {
+	// Use PRAGMA to get table info - this is safe and read-only
+	rows, err := s.db.Query(fmt.Sprintf("PRAGMA table_info(%s)", tableName))
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var columns []string
+	for rows.Next() {
+		var cid int
+		var name string
+		var dataType string
+		var notNull int
+		var dfltValue sql.NullString
+		var pk int
+
+		if err := rows.Scan(&cid, &name, &dataType, &notNull, &dfltValue, &pk); err != nil {
+			return nil, err
+		}
+		columns = append(columns, name)
+	}
+
+	return columns, rows.Err()
+}
+
+// SuggestColumnNames returns similar column names for a given table
+func (s *Store) SuggestColumnNames(tableName string, input string) ([]string, error) {
+	columns, err := s.GetTableSchema(tableName)
+	if err != nil {
+		return nil, err
+	}
+
+	var suggestions []string
+	lowerInput := strings.ToLower(input)
+	for _, col := range columns {
+		lowerCol := strings.ToLower(col)
+		// Simple similarity: contains or edit distance would be better
+		if strings.Contains(lowerCol, lowerInput) || strings.Contains(lowerInput, lowerCol) {
+			suggestions = append(suggestions, col)
+		}
+	}
+
+	return suggestions, nil
 }
