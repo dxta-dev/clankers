@@ -6,8 +6,9 @@ Invariants
 - Event schemas accept optional fields and pass through unknown keys.
 - Storage payloads require `id` and session/message linkage fields.
 - `MessagePayloadSchema.role` and `MessagePayloadSchema.textContent` must be present before writing.
-- OpenCode uses `sessionID` (not `id`) for session identifiers in all event payloads.
+- OpenCode session events may use `sessionID` or `id`; plugins must accept both and normalize to a single session id.
 - OpenCode uses `messageID` (not `id`) for message identifiers in message-related events.
+- OpenCode session data is delivered under `event.properties.info` for session events.
 
 Links: [summary](../summary.md), [practices](../practices.md), [sqlite](../storage/sqlite.md)
 

@@ -577,6 +577,10 @@ SessionStart: async (event) => {
 }
 ```
 
+### 7. Missing session fields on SessionEnd
+
+Claude Code `SessionEnd` does not include title/model/createdAt. If you upsert only the `SessionEnd` payload, those fields can be overwritten to NULL/defaults. Carry forward values from earlier hooks when building the final session payload.
+
 ## Advanced: Hook Output
 
 Hooks can return structured output to control Claude Code behavior:

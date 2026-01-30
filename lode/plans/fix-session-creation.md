@@ -7,20 +7,11 @@
 
 ## Root Cause
 
-The `SessionEventSchema` expected `id` as the session identifier field, but OpenCode actually sends `sessionID` (consistent with message events that use `sessionID` and `messageID`). This caused Zod validation to fail silently on all session events, preventing sessions from being created while messages worked fine.
+OpenCode session events deliver data under `event.properties.info` and identify sessions with `id`, not `sessionID`. The plugin validated `event.properties` directly and required `sessionID`, so Zod validation failed and the session upsert was skipped.
 
 ## Current State
 
-Dev environment (`nix develop .#with-daemon-and-plugin`) is fully operational:
-
-| Component | Status |
-|-----------|--------|
-| Daemon | Running with debug logging |
-| Socket | Connected at `.clankers-dev/dxta-clankers.sock` |
-| Database | SQLite with `sessions` and `messages` tables |
-| Plugin | Built and loaded by OpenCode |
-| Messages | ✅ Being stored (4 messages from conversation) |
-| Sessions | ❌ **0 sessions created** |
+Dev environment (`nix develop .#with-daemon-and-plugin`) is fully operational and sessions are now created with title, project path/name, and timestamps. Older sessions from before the fix remain sparse.
 
 ## The Problem
 
@@ -130,36 +121,28 @@ Once root cause is identified:
 
 ## Changes Made
 
-### 1. Fixed `SessionEventSchema` (`packages/core/src/schemas.ts`)
+### 1. Updated `SessionEventSchema` (`packages/core/src/schemas.ts`)
 
-Changed session identifier field from `id` to `sessionID`:
+Accepts both `id` and `sessionID` for session identifiers:
 
 ```ts
-// Before
-id: z.string()
-
-// After  
-sessionID: z.string()
+id: z.string().optional(),
+sessionID: z.string().optional(),
 ```
 
 ### 2. Updated Plugin Handler (`apps/opencode-plugin/src/index.ts`)
 
-Updated references from `session.id` to `session.sessionID`:
+Normalize session events from `properties.info` and accept `id` or `sessionID`:
 
 ```ts
-const sessionId = session.sessionID;
-// ...
-await rpc.upsertSession({
-  id: session.sessionID,
-  // ...
-});
+const sessionInfo = (props as { info?: unknown })?.info ?? props;
+const parsed = SessionEventSchema.safeParse(sessionInfo);
+const sessionId = session.sessionID ?? session.id;
 ```
 
 ### 3. Updated Documentation (`lode/data-model/schemas.md`)
 
-Added invariants documenting OpenCode's field naming conventions:
-- OpenCode uses `sessionID` for session identifiers
-- OpenCode uses `messageID` for message identifiers
+Added invariants documenting OpenCode's session payload shape and identifier normalization.
 
 ## Related Lodes
 
@@ -167,8 +150,17 @@ Added invariants documenting OpenCode's field naming conventions:
 - [data-model/schemas](data-model/schemas.md) - Zod schema definitions
 - [daemon/architecture](daemon/architecture.md) - RPC handlers
 
+## Diagram
+
+```mermaid
+flowchart LR
+  Event[session.updated event] --> Info[properties.info]
+  Info --> Schema[SessionEventSchema]
+  Schema --> Normalize[normalize id/sessionID]
+  Normalize --> Upsert[rpc.upsertSession]
+```
+
 ## Notes
 
-- Messages are being stored correctly - the RPC pipeline works
-- The issue is specifically session lifecycle events
-- May need to coordinate with OpenCode's event documentation
+- Messages are being stored correctly; the RPC pipeline works.
+- Session events require reading `properties.info` to capture metadata.

@@ -2,7 +2,8 @@ import { z } from "zod";
 
 export const SessionEventSchema = z
 	.object({
-		sessionID: z.string(),
+		id: z.string().optional(),
+		sessionID: z.string().optional(),
 		title: z.string().optional(),
 		directory: z.string().optional(),
 		cwd: z.string().optional(),

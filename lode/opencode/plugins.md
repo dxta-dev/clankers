@@ -10,6 +10,9 @@ Invariants
 - Hook names match the documented event list (session, message, tool, etc.).
 - Database creation/migrations are handled by the clankers-daemon, not the plugin.
 
+Logs
+- OpenCode logs (Linux) live at `~/.local/share/opencode/log/`.
+
 Links: [summary](../summary.md), [practices](../practices.md), [schemas](../data-model/schemas.md), [daemon](../daemon/architecture.md)
 
 Example

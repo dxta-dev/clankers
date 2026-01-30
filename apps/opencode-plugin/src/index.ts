@@ -16,18 +16,73 @@ const syncedSessions = new Set<string>();
 async function handleEvent(
 	event: { type: string; properties?: unknown },
 	rpc: RpcClient,
+	// biome-ignore lint/suspicious/noExplicitAny: debug logging requires flexible typing
+	client: any,
 ) {
 	const props = event.properties as unknown;
+
+	// Debug: log all events
+	void client.app.log({
+		body: {
+			service: "clankers",
+			level: "debug",
+			message: `Event received: ${event.type}`,
+			extra: { properties: props },
+		},
+	});
 
 	if (
 		event.type === "session.created" ||
 		event.type === "session.updated" ||
 		event.type === "session.idle"
 	) {
-		const parsed = SessionEventSchema.safeParse(props);
-		if (!parsed.success) return;
+		const sessionInfo = (props as { info?: unknown })?.info ?? props;
+		const parsed = SessionEventSchema.safeParse(sessionInfo);
+		if (!parsed.success) {
+			void client.app.log({
+				body: {
+					service: "clankers",
+					level: "warn",
+					message: `Session event validation failed: ${parsed.error.message}`,
+					extra: { error: parsed.error.format(), properties: sessionInfo },
+				},
+			});
+			return;
+		}
 		const session = parsed.data;
-		const sessionId = session.sessionID;
+		const sessionId = session.sessionID ?? session.id;
+		if (!sessionId) {
+			void client.app.log({
+				body: {
+					service: "clankers",
+					level: "warn",
+					message: "Session event missing session ID",
+					extra: { properties: props },
+				},
+			});
+			return;
+		}
+		void client.app.log({
+			body: {
+				service: "clankers",
+				level: "debug",
+				message: `Session parsed: ${sessionId}`,
+				extra: {
+					sessionID: sessionId,
+					title: session.title,
+					path: session.path,
+					cwd: session.cwd,
+					directory: session.directory,
+					modelID: session.modelID,
+					model: session.model,
+					providerID: session.providerID,
+					tokens: session.tokens,
+					usage: session.usage,
+					cost: session.cost,
+					time: session.time,
+				},
+			},
+		});
 		if (event.type === "session.created") {
 			if (syncedSessions.has(sessionId)) return;
 			syncedSessions.add(sessionId);
@@ -49,8 +104,8 @@ async function handleEvent(
 			session.tokens?.output || session.usage?.completionTokens || 0;
 		const cost = session.cost || session.usage?.cost || 0;
 
-		await rpc.upsertSession({
-			id: session.sessionID,
+		const sessionPayload = {
+			id: sessionId,
 			title: session.title || "Untitled Session",
 			projectPath,
 			projectName: projectPath?.split("/").pop(),
@@ -61,7 +116,18 @@ async function handleEvent(
 			cost,
 			createdAt: session.time?.created,
 			updatedAt: session.time?.updated,
+		};
+
+		void client.app.log({
+			body: {
+				service: "clankers",
+				level: "debug",
+			message: `Upserting session: ${sessionId}`,
+				extra: sessionPayload,
+			},
 		});
+
+		await rpc.upsertSession(sessionPayload);
 	}
 
 	if (event.type === "message.updated") {
@@ -165,7 +231,7 @@ export const ClankersPlugin: Plugin = async ({ client }) => {
 		event: async ({ event }) => {
 			if (!connected) return;
 			try {
-				await handleEvent(event, rpc);
+				await handleEvent(event, rpc, client);
 			} catch (error) {
 				void client.app.log({
 					body: {
