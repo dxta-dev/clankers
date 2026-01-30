@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"strconv"
 
-	"github.com/dxta-dev/clankers-daemon/internal/paths"
+	"github.com/dxta-dev/clankers/internal/paths"
 )
 
 type Profile struct {

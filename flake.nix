@@ -17,10 +17,10 @@
       forAllSystems = nixpkgs.lib.genAttrs supportedSystems;
 
       clankersOverlay = final: prev: {
-        clankers-daemon = final.callPackage (
+        clankers = final.callPackage (
           { buildGoModule, lib }:
           buildGoModule {
-            pname = "clankers-daemon";
+            pname = "clankers";
             version = "0.1.0";
             src = ./packages/daemon;
             vendorHash = "sha256-e8w2sXRMbrTCnwpCiNFCKAIxznIIxG/Frwdqn1KG1HQ=";
@@ -38,7 +38,7 @@
 
             meta = {
               description = "Clankers daemon - SQLite persistence for AI harness plugins";
-              mainProgram = "clankers-daemon";
+              mainProgram = "clankers";
               homepage = "https://github.com/dxta-dev/clankers";
               license = final.lib.licenses.mit;
             };
@@ -54,17 +54,17 @@
           ...
         }:
         let
-          cfg = config.services.clankers-daemon;
+          cfg = config.services.clankers;
         in
         {
-          options.services.clankers-daemon = {
-            enable = lib.mkEnableOption "clankers-daemon - SQLite persistence service for AI harness plugins";
+          options.services.clankers = {
+            enable = lib.mkEnableOption "clankers - SQLite persistence service for AI harness plugins";
 
             package = lib.mkOption {
               type = lib.types.package;
-              default = pkgs.clankers-daemon or self.packages.${pkgs.system}.clankers-daemon;
-              defaultText = lib.literalExpression "pkgs.clankers-daemon";
-              description = "The clankers-daemon package to use";
+              default = pkgs.clankers or self.packages.${pkgs.system}.clankers;
+              defaultText = lib.literalExpression "pkgs.clankers";
+              description = "The clankers package to use";
             };
 
             dataRoot = lib.mkOption {
@@ -127,7 +127,7 @@
 
             users.groups.${cfg.group} = { };
 
-            systemd.services.clankers-daemon = {
+            systemd.services.clankers = {
               description = "Clankers Daemon - SQLite persistence for AI harness plugins";
               after = [ "network.target" ];
               wantedBy = [ "multi-user.target" ];
@@ -145,7 +145,7 @@
                       (lib.optionalString (cfg.socketPath != null) "--socket=${cfg.socketPath}")
                     ];
                   in
-                  "${cfg.package}/bin/clankers-daemon daemon ${args}";
+                  "${cfg.package}/bin/clankers daemon ${args}";
 
                 Restart = "on-failure";
                 RestartSec = 5;
@@ -264,7 +264,7 @@
               suffix,
             }:
             pkgs.buildGoModule {
-              pname = "clankers-daemon-${name}";
+              pname = "clankers-${name}";
               version = "0.1.0";
               src = ./packages/daemon;
               vendorHash = "sha256-e8w2sXRMbrTCnwpCiNFCKAIxznIIxG/Frwdqn1KG1HQ=";
@@ -288,35 +288,35 @@
 
               postInstall =
                 let
-                  srcBinary = if GOOS == "windows" then "clankers-daemon.exe" else "clankers-daemon";
-                  dstBinary = "clankers-daemon${suffix}";
+                  srcBinary = if GOOS == "windows" then "clankers.exe" else "clankers";
+                  dstBinary = "clankers${suffix}";
                 in
                 ''
                   if [ -d "$out/bin/${GOOS}_${GOARCH}" ]; then
                     mv "$out/bin/${GOOS}_${GOARCH}/${srcBinary}" "$out/bin/${dstBinary}"
                     rmdir "$out/bin/${GOOS}_${GOARCH}"
-                  elif [ -f "$out/bin/clankers-daemon" ] && [ "${suffix}" != "" ]; then
-                    mv "$out/bin/clankers-daemon" "$out/bin/${dstBinary}"
+                  elif [ -f "$out/bin/clankers" ] && [ "${suffix}" != "" ]; then
+                    mv "$out/bin/clankers" "$out/bin/${dstBinary}"
                   fi
                 '';
 
               meta = {
                 description = "Clankers daemon for ${name}";
-                mainProgram = "clankers-daemon${suffix}";
+                mainProgram = "clankers${suffix}";
               };
             };
 
           daemonCrossPackages = builtins.listToAttrs (
             map (target: {
-              name = "clankers-daemon-${target.name}";
+              name = "clankers-${target.name}";
               value = mkDaemonCross target;
             }) daemonTargets
           );
         in
         daemonCrossPackages
         // {
-          clankers-daemon = pkgs.buildGoModule {
-            pname = "clankers-daemon";
+          clankers = pkgs.buildGoModule {
+            pname = "clankers";
             version = "0.1.0";
             src = ./packages/daemon;
             vendorHash = "sha256-e8w2sXRMbrTCnwpCiNFCKAIxznIIxG/Frwdqn1KG1HQ=";
@@ -334,7 +334,7 @@
 
             meta = {
               description = "Clankers daemon - SQLite persistence for AI harness plugins";
-              mainProgram = "clankers-daemon";
+              mainProgram = "clankers";
             };
           };
 
@@ -356,7 +356,7 @@
             filterName = "@dxta-dev/clankers-claude-code";
           };
 
-          default = self.packages.${system}.clankers-daemon;
+          default = self.packages.${system}.clankers;
         }
       );
 
@@ -373,7 +373,7 @@
             fetcherVersion = 3;
           };
 
-          daemon = self.packages.${system}.clankers-daemon;
+          daemon = self.packages.${system}.clankers;
         in
         {
           go-tests = pkgs.buildGoModule {
@@ -477,7 +477,7 @@
               echo "  Socket: $CLANKERS_SOCKET_PATH"
               echo "  DB: $CLANKERS_DB_PATH"
 
-              clankers-daemon daemon &
+              clankers daemon &
               DAEMON_PID=$!
 
               # Wait for socket to be ready
@@ -510,7 +510,7 @@
         system:
         let
           pkgs = import nixpkgs { inherit system; };
-          daemon = self.packages.${system}.clankers-daemon;
+          daemon = self.packages.${system}.clankers;
           opencodePlugin = self.packages.${system}.clankers-opencode;
         in
         {
@@ -546,8 +546,8 @@
               echo "  DB: $CLANKERS_DB_PATH"
               echo ""
               echo "Commands:"
-              echo "  clankers-daemon daemon            - Start daemon manually"
-              echo "  clankers-daemon --help            - Show daemon options"
+              echo "  clankers daemon            - Start daemon manually"
+              echo "  clankers --help            - Show daemon options"
               echo ""
               echo "Quick start (recommended):"
               echo "  nix develop .#with-all-plugins    - Both plugins + auto-daemon"
@@ -566,7 +566,7 @@
               if [ -S "$CLANKERS_SOCKET_PATH" ]; then
                 echo "Daemon appears to be running (socket exists)"
               else
-                echo "Daemon not running. Start with: clankers-daemon daemon &"
+                echo "Daemon not running. Start with: clankers daemon &"
               fi
             '';
           };
@@ -625,7 +625,7 @@
                 echo "Daemon appears to be running (socket exists)"
               else
                 echo ""
-                echo "Daemon not running. Start with: clankers-daemon daemon &"
+                echo "Daemon not running. Start with: clankers daemon &"
               fi
 
               echo ""
@@ -675,8 +675,8 @@
               fi
 
               # Start daemon in background
-              echo "Starting clankers-daemon..."
-              clankers-daemon daemon --log-level=debug &
+              echo "Starting clankers..."
+              clankers daemon --log-level=debug &
               DAEMON_PID=$!
 
               # Store PID for cleanup
@@ -821,7 +821,7 @@
                               echo "Daemon appears to be running (socket exists)"
                             else
                               echo ""
-                              echo "Daemon not running. Start with: clankers-daemon daemon &"
+                              echo "Daemon not running. Start with: clankers daemon &"
                             fi
 
                             echo ""
@@ -872,8 +872,8 @@
                             fi
 
                             # Start daemon in background
-                            echo "Starting clankers-daemon..."
-                            clankers-daemon daemon --log-level=debug &
+                            echo "Starting clankers..."
+                            clankers daemon --log-level=debug &
                             DAEMON_PID=$!
 
                             # Store PID for cleanup
@@ -999,8 +999,8 @@
                             fi
 
                             # Start daemon in background
-                            echo "Starting clankers-daemon..."
-                            clankers-daemon daemon --log-level=debug &
+                            echo "Starting clankers..."
+                            clankers daemon --log-level=debug &
                             DAEMON_PID=$!
 
                             # Store PID for cleanup

@@ -1,4 +1,4 @@
-Clankers is a pnpm monorepo with app packages for OpenCode, Cursor, and Claude Code plus a shared `packages/core` library and a Go daemon under `packages/daemon/`; plugins validate events with Zod, aggregate message parts in memory, and call the clankers-daemon over JSON-RPC to persist sessions and messages into a local SQLite file; the daemon owns all database operations including schema creation, migrations, and upserts, listens on a Unix socket (or Windows named pipe), and resolves paths using platform-specific rules with environment overrides.
+Clankers is a pnpm monorepo with app packages for OpenCode, Cursor, and Claude Code plus a shared `packages/core` library and a Go daemon under `packages/daemon/`; plugins validate events with Zod, aggregate message parts in memory, and call the clankers-daemon over JSON-RPC to persist sessions and messages into a local SQLite file; the daemon owns all database operations including schema creation, migrations, and upserts, listens on a Unix socket (or Windows named pipe), and resolves paths using platform-specific rules with environment overrides. A unified structured logging system (daemon-owned, JSON Lines format, daily rotation with 30-day retention) allows all components to log to the same destination via RPC.
 
 Plugin Status:
 - ✅ OpenCode Plugin: Complete (event-based, sessions/messages working)
@@ -13,7 +13,7 @@ CLI / Daemon Status (Phase 1-2):
 - ✅ Query Command: Read-only SQL (`clankers query`, table/json output)
 - ⏳ Sync Command: Future (Phase 4)
 
-Links: [terminology](terminology.md), [practices](practices.md), [schemas](data-model/schemas.md), [opencode/plugins](opencode/plugins.md), [claude/plugin-system](claude/plugin-system.md), [event-handling](opencode/event-handling.md), [sqlite](storage/sqlite.md), [paths](storage/paths.md), [aggregation](ingestion/aggregation.md), [daemon](daemon/architecture.md), [cli/architecture](cli/architecture.md), [cli/config-system](cli/config-system.md)
+Links: [terminology](terminology.md), [practices](practices.md), [schemas](data-model/schemas.md), [opencode/plugins](opencode/plugins.md), [claude/plugin-system](claude/plugin-system.md), [event-handling](opencode/event-handling.md), [sqlite](storage/sqlite.md), [paths](storage/paths.md), [logging](logging/architecture.md), [aggregation](ingestion/aggregation.md), [daemon](daemon/architecture.md), [cli/architecture](cli/architecture.md), [cli/config-system](cli/config-system.md)
 
 Example
 ```ts

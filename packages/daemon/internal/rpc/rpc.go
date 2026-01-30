@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 
-	"github.com/dxta-dev/clankers-daemon/internal/paths"
-	"github.com/dxta-dev/clankers-daemon/internal/storage"
+	"github.com/dxta-dev/clankers/internal/paths"
+	"github.com/dxta-dev/clankers/internal/storage"
 	"github.com/sourcegraph/jsonrpc2"
 )
 

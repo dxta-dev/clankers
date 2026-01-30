@@ -15,6 +15,8 @@
 - storage/
   - [storage/sqlite](storage/sqlite.md)
 - [storage/paths](storage/paths.md)
+- logging/
+  - [logging/architecture](logging/architecture.md)
 - ingestion/
   - [ingestion/aggregation](ingestion/aggregation.md)
 - daemon/
@@ -46,6 +48,7 @@
   - [plans/web-dashboard](plans/web-dashboard.md)
   - [plans/database-triggers-sync](plans/database-triggers-sync.md)
   - [plans/sync-optimization](plans/sync-optimization.md)
+  - [plans/unified-logging](plans/unified-logging.md)
 - claude/
   - [claude/plugin-system](claude/plugin-system.md)
   - [claude/data-mapping](claude/data-mapping.md)
@@ -73,6 +76,8 @@ flowchart TB
   OpenCode --> Plugins[plugins.md]
   Lode --> Storage[storage/]
   Storage --> SQLite[sqlite.md]
+  Lode --> Logging[logging/]
+  Logging --> LogArch[architecture.md]
   Lode --> Ingestion[ingestion/]
   Ingestion --> Aggregation[aggregation.md]
   Lode --> Daemon[daemon/]

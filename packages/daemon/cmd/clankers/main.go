@@ -3,7 +3,7 @@ package main
 import (
 	"os"
 
-	"github.com/dxta-dev/clankers-daemon/internal/cli"
+	"github.com/dxta-dev/clankers/internal/cli"
 )
 
 func main() {

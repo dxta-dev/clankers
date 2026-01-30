@@ -1,4 +1,4 @@
-module github.com/dxta-dev/clankers-daemon
+module github.com/dxta-dev/clankers
 
 go 1.23.0
 

@@ -37,7 +37,7 @@ operational guide for agentic coding work.
 - `packages/core/src/schemas.ts` defines Zod schemas for validation boundaries.
 - `packages/core/src/aggregation.ts` handles message assembly.
 - `packages/core/src/rpc-client.ts` owns the JSON-RPC client for the daemon.
-- `packages/daemon/cmd/clankers-daemon/main.go` is the daemon entry point.
+- `packages/daemon/cmd/clankers/main.go` is the daemon entry point.
 - `packages/daemon/internal/rpc/rpc.go` handles JSON-RPC handlers.
 - `packages/daemon/internal/storage/storage.go` owns SQLite persistence.
 

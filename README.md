@@ -21,12 +21,12 @@ project-level `opencode.json`):
 }
 ```
 
-Install the package (npm or Bun). The clankers-daemon creates and migrates the
+Install the package (npm or Bun). The clankers daemon creates and migrates the
 local database on startup.
 
 ## Installing the Daemon
 
-The plugin requires the `clankers-daemon` binary. Install it with:
+The plugin requires the `clankers` binary. Install it with:
 
 ```bash
 # Linux/macOS
@@ -53,7 +53,7 @@ installs to `~/.local/bin` (Linux/macOS) or `%LOCALAPPDATA%\clankers\bin` (Windo
 Alternatively, if you use Nix:
 
 ```bash
-nix profile install github:dxta-dev/clankers#clankers-daemon
+nix profile install github:dxta-dev/clankers#clankers
 ```
 
 ### NixOS Installation
@@ -71,7 +71,7 @@ The flake provides multiple integration options:
       modules = [
         clankers.nixosModules.default
         {
-          services.clankers-daemon = {
+          services.clankers = {
             enable = true;
             logLevel = "info";
             dataRoot = "/var/lib/clankers";
@@ -86,17 +86,17 @@ The flake provides multiple integration options:
 **Dev Shell with Auto-Start** (for active development):
 ```bash
 # From the clankers repo - daemon auto-starts on shell enter, stops on exit
-nix develop .#with-daemon
+nix develop .#with-all-plugins
 
 # Or manual control
 nix develop
-clankers-daemon &
+clankers daemon &
 ```
 
-**Flake Overlay** (adds `pkgs.clankers-daemon` to your nixpkgs):
+**Flake Overlay** (adds `pkgs.clankers` to your nixpkgs):
 ```nix
 nixpkgs.overlays = [ clankers.overlays.default ];
-# Now pkgs.clankers-daemon is available everywhere
+# Now pkgs.clankers is available everywhere
 ```
 
 ## Quick start
@@ -104,7 +104,7 @@ nixpkgs.overlays = [ clankers.overlays.default ];
 1. Install the daemon (see above).
 2. Add the plugin to your OpenCode config (or drop a built plugin into
    `.opencode/plugins/`).
-3. Start `clankers-daemon` so it can create the database.
+3. Start `clankers daemon` so it can create the database.
 4. Restart OpenCode so the plugin loads with local SQLite sync enabled.
 
 ## Configuration
@@ -141,8 +141,8 @@ The flake provides a complete dev environment with Node, pnpm, Go, and the daemo
 # Standard dev shell - manual daemon control
 nix develop
 
-# Dev shell with auto-started daemon
-nix develop .#with-daemon
+# Dev shell with auto-started daemon and all plugins
+nix develop .#with-all-plugins
 
 # Run checks
 nix flake check

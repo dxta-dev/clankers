@@ -1,10 +1,10 @@
 #Requires -Version 5.1
 <#
 .SYNOPSIS
-    Install clankers-daemon binary from GitHub Releases.
+    Install clankers binary from GitHub Releases.
 
 .DESCRIPTION
-    Downloads and installs the clankers-daemon binary for Windows.
+    Downloads and installs the clankers binary for Windows.
     Verifies checksum before installation.
 
 .EXAMPLE
@@ -32,7 +32,7 @@ param(
 $ErrorActionPreference = "Stop"
 
 $Repo = "dxta-dev/clankers"
-$BinaryName = "clankers-daemon"
+$BinaryName = "clankers"
 $Target = "windows-amd64"
 
 function Write-Log {
@@ -203,7 +203,7 @@ function Main {
         }
 
         Write-Log ""
-        Write-Log "Done! Run 'clankers-daemon --help' to get started."
+        Write-Log "Done! Run 'clankers --help' to get started."
     }
     finally {
         # Cleanup

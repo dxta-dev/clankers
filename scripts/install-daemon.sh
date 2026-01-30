@@ -1,7 +1,7 @@
 #!/bin/sh
 set -e
 
-# Install clankers-daemon binary from GitHub Releases
+# Install clankers binary from GitHub Releases
 #
 # Usage:
 #   curl -fsSL https://raw.githubusercontent.com/dxta-dev/clankers/main/scripts/install-daemon.sh | sh
@@ -14,7 +14,7 @@ set -e
 #   GITHUB_TOKEN          - Optional, for higher API rate limits
 
 REPO="dxta-dev/clankers"
-BINARY_NAME="clankers-daemon"
+BINARY_NAME="clankers"
 
 # --- Helpers ---
 
@@ -198,7 +198,7 @@ main() {
   esac
   
   log ""
-  log "Done! Run 'clankers-daemon --help' to get started."
+  log "Done! Run 'clankers --help' to get started."
 }
 
 main "$@"

@@ -206,7 +206,7 @@ export const ClankersPlugin: Plugin = async ({ client }) => {
 				body: {
 					service: "clankers",
 					level: "info",
-					message: `Connected to clankers-daemon v${health.version}`,
+					message: `Connected to clankers v${health.version}`,
 				},
 			});
 		}

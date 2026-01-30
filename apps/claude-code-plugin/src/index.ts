@@ -186,7 +186,7 @@ export function createPlugin(): ClaudeCodeHooks | null {
 			connectionState = health.ok;
 			if (connectionState) {
 				console.log(
-					`[clankers] Connected to clankers-daemon v${health.version}`,
+					`[clankers] Connected to clankers v${health.version}`,
 				);
 			}
 			return connectionState;

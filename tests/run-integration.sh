@@ -19,12 +19,12 @@ echo "Starting daemon..."
 echo "  Socket: $CLANKERS_SOCKET_PATH"
 echo "  DB: $CLANKERS_DB_PATH"
 
-if [ -x "./result-daemon/bin/clankers-daemon" ]; then
-    DAEMON_BIN="./result-daemon/bin/clankers-daemon"
-elif command -v clankers-daemon &>/dev/null; then
-    DAEMON_BIN="clankers-daemon"
+if [ -x "./result-daemon/bin/clankers" ]; then
+    DAEMON_BIN="./result-daemon/bin/clankers"
+elif command -v clankers &>/dev/null; then
+    DAEMON_BIN="clankers"
 else
-    echo "ERROR: clankers-daemon not found"
+    echo "ERROR: clankers binary not found"
     exit 1
 fi
 

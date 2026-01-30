@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/dxta-dev/clankers-daemon/internal/paths"
+	"github.com/dxta-dev/clankers/internal/paths"
 	"github.com/spf13/cobra"
 )
 
