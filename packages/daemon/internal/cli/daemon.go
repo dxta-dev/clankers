@@ -35,6 +35,28 @@ func (f *filteredLogWriter) Write(p []byte) (n int, err error) {
 	return f.w.Write(p)
 }
 
+// filteredJsonrpc2Logger implements jsonrpc2.Logger to suppress connection error spam
+type filteredJsonrpc2Logger struct {
+	logger *logging.Logger
+}
+
+func (f *filteredJsonrpc2Logger) Printf(format string, v ...interface{}) {
+	msg := fmt.Sprintf(format, v...)
+	// Suppress common benign connection errors that occur when clients disconnect
+	if strings.Contains(msg, "broken pipe") ||
+		strings.Contains(msg, "connection reset by peer") ||
+		strings.Contains(msg, "use of closed network connection") ||
+		strings.Contains(msg, "jsonrpc2: protocol error") ||
+		strings.Contains(msg, "sending response") && strings.Contains(msg, "error") ||
+		strings.Contains(msg, "writing response") && strings.Contains(msg, "error") {
+		return
+	}
+	// Pass through other messages to unified structured logger
+	if f.logger != nil {
+		f.logger.Debugf("jsonrpc2", msg)
+	}
+}
+
 func daemonCmd() *cobra.Command {
 	var (
 		socketPath string
@@ -158,7 +180,7 @@ and accepts JSON-RPC requests from editor plugins.`,
 					}
 				}
 
-				go serveConn(ctx, conn, handler)
+				go serveConn(ctx, conn, handler, logger)
 			}
 		},
 	}
@@ -176,7 +198,7 @@ and accepts JSON-RPC requests from editor plugins.`,
 	return cmd
 }
 
-func serveConn(ctx context.Context, conn net.Conn, handler *rpc.Handler) {
+func serveConn(ctx context.Context, conn net.Conn, handler *rpc.Handler, logger *logging.Logger) {
 	defer conn.Close()
 
 	stream := jsonrpc2.NewBufferedStream(conn, jsonrpc2.VSCodeObjectCodec{})
@@ -189,6 +211,7 @@ func serveConn(ctx context.Context, conn net.Conn, handler *rpc.Handler) {
 				return nil, nil
 			},
 		),
+		jsonrpc2.SetLogger(&filteredJsonrpc2Logger{logger: logger}),
 	)
 
 	<-rpcConn.DisconnectNotify()

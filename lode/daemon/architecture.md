@@ -45,7 +45,10 @@ Connection pattern
 - The TypeScript RPC client (`packages/core/src/rpc-client.ts`) creates a new socket connection for each RPC call.
 - After receiving and parsing the response, the client closes the connection (`socket.end()`) after resolving the promise.
 - This can trigger a "connection reset by peer" error in the Go jsonrpc2 library's read loop, which is benign but logged by default.
-- The daemon uses a `filteredLogWriter` to suppress these expected errors, including jsonrpc2 protocol errors related to Unix socket reads.
+- The daemon uses two layers of filtering:
+  1. `filteredLogWriter` - wraps `os.Stderr` to filter the standard Go `log` package output
+  2. `filteredJsonrpc2Logger` - implements `jsonrpc2.Logger` interface and is passed via `jsonrpc2.SetLogger()` to filter jsonrpc2's internal logging
+- Both filters suppress: "broken pipe", "connection reset by peer", "use of closed network connection", "jsonrpc2: protocol error"
 
 Diagram
 ```mermaid
