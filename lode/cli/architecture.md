@@ -2,6 +2,17 @@
 
 The clankers CLI provides both daemon mode and interactive commands for local database querying and cloud sync. **Requires explicit subcommand** - this is a breaking change from previous versions.
 
+## Implementation Status
+
+| Phase | Status | Files |
+|-------|--------|-------|
+| Config Package | ✅ Complete | `internal/config/config.go` |
+| CLI Structure (cobra) | ✅ Complete | `internal/cli/root.go`, `internal/cli/config.go` |
+| Config Commands | ✅ Complete | `config set`, `config get`, `config list`, `config profiles` |
+| Daemon Command | ⏳ Pending | `internal/cli/daemon.go` |
+| Query Command | ⏳ Future | Phase 2 |
+| Sync Command | ⏳ Future | Phase 4 |
+
 ## Commands
 
 | Command | Purpose |
@@ -179,4 +190,78 @@ clankers query "UPDATE sessions SET title = 'X' WHERE id = 'y'" --write
 2. Active profile config
 3. Default values (lowest)
 
-Links: [auth](auth.md), [sync](sync.md), [queries](queries.md), [daemon](../daemon/architecture.md), [web-service](../web-service/overview.md)
+## Implementation Details
+
+### Config Package (`internal/config/config.go`)
+
+Core types and API:
+
+```go
+type Profile struct {
+    Endpoint     string `json:"endpoint,omitempty"`
+    SyncEnabled  bool   `json:"sync_enabled"`
+    SyncInterval int    `json:"sync_interval"` // seconds
+    AuthMode     string `json:"auth"`          // "none" for Phase 1
+}
+
+type Config struct {
+    Profiles      map[string]Profile `json:"profiles"`
+    ActiveProfile string             `json:"active_profile"`
+}
+
+// Key methods:
+func Load() (*Config, error)                          // Load from disk or return default
+func (c *Config) Save() error                         // Persist to disk
+func (c *Config) GetActiveProfile() Profile           // Get current profile
+func (c *Config) SetActiveProfile(name string) error  // Switch profile
+func (c *Config) GetProfileValue(key string) (string, error)
+func (c *Config) SetProfileValue(key, value string) error
+```
+
+**Default values:**
+- `SyncEnabled`: false
+- `SyncInterval`: 30 seconds
+- `AuthMode`: "none"
+
+**Env var overrides applied on Load():**
+- `CLANKERS_ENDPOINT` → overrides profile.Endpoint
+- `CLANKERS_SYNC_ENABLED` → overrides profile.SyncEnabled
+
+### CLI Package (`internal/cli/`)
+
+Uses [spf13/cobra](https://github.com/spf13/cobra) for command structure.
+
+**File organization:**
+- `root.go` - Root command, global flags, subcommand registration
+- `config.go` - All config subcommands (set, get, list, profiles)
+- `daemon.go` - Daemon subcommand (Step 5, pending)
+
+**Root command behavior:**
+```go
+RunE: func(cmd *cobra.Command, args []string) error {
+    // No subcommand specified - show help and error
+    cmd.Help()
+    fmt.Fprintln(os.Stderr, "Error: No subcommand specified...")
+    return fmt.Errorf("no subcommand specified")
+},
+```
+
+**Config command structure:**
+```
+config
+├── set <key> <value>
+├── get <key>
+├── list [--format json]
+└── profiles
+    ├── list [--format json]
+    └── use <name>
+```
+
+### Config File Location
+
+Platform-specific paths via `internal/paths/paths.go`:
+- **macOS**: `~/Library/Application Support/clankers/clankers.json`
+- **Linux**: `~/.local/share/clankers/clankers.json` (XDG)
+- **Windows**: `%APPDATA%/clankers/clankers.json`
+
+Links: [config-system](config-system.md), [auth](auth.md), [sync](sync.md), [queries](queries.md), [daemon](../daemon/architecture.md), [web-service](../web-service/overview.md)

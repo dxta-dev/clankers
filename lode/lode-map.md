@@ -21,6 +21,7 @@
   - [daemon/install](daemon/install.md)
 - cli/
   - [cli/architecture](cli/architecture.md)
+  - [cli/config-system](cli/config-system.md)
   - [cli/auth](cli/auth.md)
   - [cli/queries](cli/queries.md)
   - [cli/sync](cli/sync.md)
