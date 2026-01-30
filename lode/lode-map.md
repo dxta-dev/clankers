@@ -25,6 +25,7 @@
   - [cli/auth](cli/auth.md)
   - [cli/queries](cli/queries.md)
   - [cli/sync](cli/sync.md)
+  - [cli/test-catalog](cli/test-catalog.md)
 - web-service/
   - [web-service/overview](web-service/overview.md)
 - build/

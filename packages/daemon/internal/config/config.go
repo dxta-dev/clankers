@@ -20,6 +20,7 @@ type Profile struct {
 type Config struct {
 	Profiles      map[string]Profile `json:"profiles"`
 	ActiveProfile string             `json:"active_profile"`
+	configPath    string             // internal path for Save(), not serialized
 }
 
 func DefaultProfile() Profile {
@@ -39,16 +40,24 @@ func DefaultConfig() *Config {
 	}
 }
 
-func Load() (*Config, error) {
-	configPath := paths.GetConfigPath()
+func Load(configPath string) (*Config, error) {
+	if configPath == "" {
+		configPath = paths.GetConfigPath()
+	}
 
 	dir := filepath.Dir(configPath)
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return nil, fmt.Errorf("failed to create config directory: %w", err)
 	}
 
+	var cfg Config
+	cfg.configPath = configPath
+
 	if _, err := os.Stat(configPath); os.IsNotExist(err) {
-		return DefaultConfig(), nil
+		defaultCfg := DefaultConfig()
+		defaultCfg.configPath = configPath
+		defaultCfg.applyEnvOverrides()
+		return defaultCfg, nil
 	}
 
 	data, err := os.ReadFile(configPath)
@@ -56,7 +65,6 @@ func Load() (*Config, error) {
 		return nil, fmt.Errorf("failed to read config: %w", err)
 	}
 
-	var cfg Config
 	if err := json.Unmarshal(data, &cfg); err != nil {
 		return nil, fmt.Errorf("failed to parse config: %w", err)
 	}
@@ -74,7 +82,10 @@ func Load() (*Config, error) {
 }
 
 func (c *Config) Save() error {
-	configPath := paths.GetConfigPath()
+	configPath := c.configPath
+	if configPath == "" {
+		configPath = paths.GetConfigPath()
+	}
 
 	dir := filepath.Dir(configPath)
 	if err := os.MkdirAll(dir, 0755); err != nil {

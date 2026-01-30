@@ -47,7 +47,7 @@ Examples:
 			key := args[0]
 			value := args[1]
 
-			cfg, err := config.Load()
+			cfg, err := config.Load(configPath)
 			if err != nil {
 				return fmt.Errorf("failed to load config: %w", err)
 			}
@@ -80,7 +80,7 @@ Examples:
 		RunE: func(cmd *cobra.Command, args []string) error {
 			key := args[0]
 
-			cfg, err := config.Load()
+			cfg, err := config.Load(configPath)
 			if err != nil {
 				return fmt.Errorf("failed to load config: %w", err)
 			}
@@ -105,7 +105,7 @@ func configListCmd() *cobra.Command {
 		Short: "List all configuration",
 		Long:  "List all configuration for the active profile.",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, err := config.Load()
+			cfg, err := config.Load(configPath)
 			if err != nil {
 				return fmt.Errorf("failed to load config: %w", err)
 			}
@@ -164,7 +164,7 @@ func profilesListCmd() *cobra.Command {
 		Short: "List available profiles",
 		Long:  "List all available configuration profiles and indicate the active one.",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, err := config.Load()
+			cfg, err := config.Load(configPath)
 			if err != nil {
 				return fmt.Errorf("failed to load config: %w", err)
 			}
@@ -214,7 +214,7 @@ func profilesUseCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			name := args[0]
 
-			cfg, err := config.Load()
+			cfg, err := config.Load(configPath)
 			if err != nil {
 				return fmt.Errorf("failed to load config: %w", err)
 			}
