@@ -16,8 +16,11 @@ nix develop .#with-plugin      # enter shell with plugin built and ready
 | Shell | Description |
 |-------|-------------|
 | `default` | Manual daemon control |
-| `with-daemon` | Auto-starts daemon on shell entry |
-| `with-plugin` | Builds plugin, copies to `.opencode/plugins/`, creates config |
+| `with-plugin` | OpenCode plugin setup (builds + copies to `.opencode/plugins/`) |
+| `with-daemon-and-plugin` | Auto-starts daemon + OpenCode plugin setup |
+| `with-claude-plugin` | Claude Code plugin setup |
+| `with-claude-daemon-and-plugin` | Auto-starts daemon + Claude Code plugin setup |
+| `with-all-plugins` | Auto-starts daemon + all plugins (OpenCode + Claude Code) |
 
 ### with-plugin (Recommended for OpenCode Development)
 
@@ -48,6 +51,7 @@ shellHook = ''
   export CLANKERS_DATA_PATH="$PWD/.clankers-dev"
   export CLANKERS_SOCKET_PATH="$PWD/.clankers-dev/dxta-clankers.sock"
   export CLANKERS_DB_PATH="$PWD/.clankers-dev/clankers.db"
+  export CLANKERS_LOG_PATH="$PWD/.clankers-dev"
 '';
 
 # Wrong - resolves to /nix/store/... when dirty
@@ -58,6 +62,7 @@ The shell exports these environment variables:
 - `CLANKERS_DATA_PATH` - Data directory (default: `$PWD/.clankers-dev`)
 - `CLANKERS_SOCKET_PATH` - Unix socket path
 - `CLANKERS_DB_PATH` - SQLite database path
+- `CLANKERS_LOG_PATH` - Log directory (default: `$PWD/.clankers-dev`, logs written as `clankers-YYYY-MM-DD.jsonl`)
 
 ## Included Tools
 
@@ -113,19 +118,46 @@ Links: [summary](summary.md), [daemon](daemon/architecture.md), [daemon-release]
 
 Example
 ```bash
-$ nix develop
-Clankers dev shell loaded
+$ nix develop .#with-all-plugins
+Clankers dev shell (with all plugins + daemon) loaded
   Node: v24.12.0
   pnpm: 10.28.0
   Go:   go1.25.5
+
+Dev environment paths:
+  Data: /home/user/clankers/.clankers-dev
+  Socket: /home/user/clankers/.clankers-dev/dxta-clankers.sock
+  DB: /home/user/clankers/.clankers-dev/clankers.db
+  Logs: /home/user/clankers/.clankers-dev
+
+========================================
+All plugins ready!
+========================================
+
+OpenCode:
+  Config:  /home/user/clankers/.opencode/config.json
+  Plugin:  /home/user/clankers/.opencode/plugins/clankers.js
+  Usage:   Restart OpenCode in this directory
+
+Claude Code:
+  Config:  /home/user/clankers/.claude/settings.json
+  Plugin:  /home/user/clankers/apps/claude-code-plugin
+  Usage:   claude --plugin-dir /home/user/clankers/apps/claude-code-plugin
+
+Socket:    /home/user/clankers/.clankers-dev/dxta-clankers.sock
+
+The daemon will stop when you exit this shell.
 ```
 
 Diagram
 ```mermaid
 flowchart LR
   Flake[flake.nix] --> Shell[nix develop]
-  Flake --> WithDaemon[nix develop .#with-daemon]
   Flake --> WithPlugin[nix develop .#with-plugin]
+  Flake --> WithDaemonPlugin[nix develop .#with-daemon-and-plugin]
+  Flake --> WithClaude[nix develop .#with-claude-plugin]
+  Flake --> WithClaudeDaemon[nix develop .#with-claude-daemon-and-plugin]
+  Flake --> WithAll[nix develop .#with-all-plugins]
   Shell --> Node[Node.js 24]
   Shell --> Go[Go 1.25]
   Shell --> SQLite[SQLite]
@@ -133,4 +165,13 @@ flowchart LR
   WithPlugin --> Build[pnpm build:opencode]
   Build --> Copy[copy to .opencode/plugins/]
   Copy --> Config[create config.json]
+  WithClaude --> BuildClaude[pnpm build:claude]
+  BuildClaude --> ClaudeSettings[create .claude/settings.json]
+  WithDaemonPlugin --> AutoDaemon[auto-start daemon]
+  WithDaemonPlugin --> Build
+  WithClaudeDaemon --> AutoDaemon
+  WithClaudeDaemon --> BuildClaude
+  WithAll --> AutoDaemon
+  WithAll --> Build
+  WithAll --> BuildClaude
 ```

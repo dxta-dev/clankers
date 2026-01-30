@@ -534,6 +534,7 @@
               export CLANKERS_DATA_PATH="$PWD/.clankers-dev"
               export CLANKERS_SOCKET_PATH="$PWD/.clankers-dev/dxta-clankers.sock"
               export CLANKERS_DB_PATH="$PWD/.clankers-dev/clankers.db"
+              export CLANKERS_LOG_PATH="$PWD/.clankers-dev"
 
               echo "Clankers dev shell loaded"
               echo "  Node: $(node --version)"
@@ -544,6 +545,7 @@
               echo "  Data: $CLANKERS_DATA_PATH"
               echo "  Socket: $CLANKERS_SOCKET_PATH"
               echo "  DB: $CLANKERS_DB_PATH"
+              echo "  Logs: $CLANKERS_LOG_PATH"
               echo ""
               echo "Commands:"
               echo "  clankers daemon            - Start daemon manually"
@@ -587,6 +589,7 @@
               export CLANKERS_DATA_PATH="$PWD/.clankers-dev"
               export CLANKERS_SOCKET_PATH="$PWD/.clankers-dev/dxta-clankers.sock"
               export CLANKERS_DB_PATH="$PWD/.clankers-dev/clankers.db"
+              export CLANKERS_LOG_PATH="$PWD/.clankers-dev"
 
               echo "Clankers dev shell (with plugin setup) loaded"
               echo "  Node: $(node --version)"
@@ -658,6 +661,7 @@
               export CLANKERS_DATA_PATH="$PWD/.clankers-dev"
               export CLANKERS_SOCKET_PATH="$PWD/.clankers-dev/dxta-clankers.sock"
               export CLANKERS_DB_PATH="$PWD/.clankers-dev/clankers.db"
+              export CLANKERS_LOG_PATH="$PWD/.clankers-dev"
 
               echo "Clankers dev shell (with daemon + plugin) loaded"
               echo "  Node: $(node --version)"
@@ -764,6 +768,7 @@
                             export CLANKERS_DATA_PATH="$PWD/.clankers-dev"
                             export CLANKERS_SOCKET_PATH="$PWD/.clankers-dev/dxta-clankers.sock"
                             export CLANKERS_DB_PATH="$PWD/.clankers-dev/clankers.db"
+                            export CLANKERS_LOG_PATH="$PWD/.clankers-dev"
 
                             echo "Clankers dev shell (with Claude Code plugin setup) loaded"
                             echo "  Node: $(node --version)"
@@ -802,7 +807,8 @@
                 },
                 "environment": {
                   "CLANKERS_DATA_PATH": "./.clankers-dev",
-                  "CLANKERS_SOCKET_PATH": "./.clankers-dev/dxta-clankers.sock"
+                  "CLANKERS_SOCKET_PATH": "./.clankers-dev/dxta-clankers.sock",
+                  "CLANKERS_LOG_PATH": "./.clankers-dev"
                 }
               }
               EOF
@@ -855,6 +861,7 @@
                             export CLANKERS_DATA_PATH="$PWD/.clankers-dev"
                             export CLANKERS_SOCKET_PATH="$PWD/.clankers-dev/dxta-clankers.sock"
                             export CLANKERS_DB_PATH="$PWD/.clankers-dev/clankers.db"
+                            export CLANKERS_LOG_PATH="$PWD/.clankers-dev"
 
                             echo "Clankers dev shell (with Claude Code daemon + plugin) loaded"
                             echo "  Node: $(node --version)"
@@ -921,7 +928,8 @@
                 },
                 "environment": {
                   "CLANKERS_DATA_PATH": "./.clankers-dev",
-                  "CLANKERS_SOCKET_PATH": "./.clankers-dev/dxta-clankers.sock"
+                  "CLANKERS_SOCKET_PATH": "./.clankers-dev/dxta-clankers.sock",
+                  "CLANKERS_LOG_PATH": "./.clankers-dev"
                 }
               }
               EOF
@@ -961,8 +969,8 @@
                                 fi
                                 rm -f "$CLANKERS_DATA_PATH/daemon.pid"
                               fi
-                            }
-                             trap cleanup_daemon EXIT
+                             }
+                              trap cleanup_daemon EXIT
             '';
           };
 
@@ -982,6 +990,7 @@
                             export CLANKERS_DATA_PATH="$PWD/.clankers-dev"
                             export CLANKERS_SOCKET_PATH="$PWD/.clankers-dev/dxta-clankers.sock"
                             export CLANKERS_DB_PATH="$PWD/.clankers-dev/clankers.db"
+                            export CLANKERS_LOG_PATH="$PWD/.clankers-dev"
 
                             echo "Clankers dev shell (with all plugins + daemon) loaded"
                             echo "  Node: $(node --version)"
@@ -1068,7 +1077,8 @@
                 },
                 "environment": {
                   "CLANKERS_DATA_PATH": "./.clankers-dev",
-                  "CLANKERS_SOCKET_PATH": "./.clankers-dev/dxta-clankers.sock"
+                  "CLANKERS_SOCKET_PATH": "./.clankers-dev/dxta-clankers.sock",
+                  "CLANKERS_LOG_PATH": "./.clankers-dev"
                 }
               }
               EOF
@@ -1097,6 +1107,7 @@
                             echo "  Usage:   claude --plugin-dir $PWD/apps/claude-code-plugin"
                             echo ""
                             echo "Socket:    $CLANKERS_SOCKET_PATH"
+                            echo "Logs:      $CLANKERS_LOG_PATH"
                             echo ""
                             echo "The daemon will stop when you exit this shell."
                             echo ""
