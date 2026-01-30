@@ -48,8 +48,7 @@ Usage:
 	root.PersistentFlags().String("profile", "", "active profile (env: CLANKERS_PROFILE)")
 
 	// Add subcommands
-	// TODO: Add daemon command in step 5
-	// root.AddCommand(daemonCmd())
+	root.AddCommand(daemonCmd())
 	root.AddCommand(configCmd())
 	// TODO: Add query and sync commands in Phase 2-4
 	// root.AddCommand(queryCmd())
