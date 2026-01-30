@@ -1,6 +1,6 @@
 # Daemon Installation
 
-The `clankers-daemon` binary can be installed via shell scripts or Nix.
+The `clankers` daemon binary can be installed via shell scripts or Nix.
 
 ## Shell Scripts
 
@@ -42,9 +42,9 @@ $env:CLANKERS_VERSION = "v0.1.0"; irm ... | iex
 
 | Platform | Default Path |
 |----------|--------------|
-| Linux | `~/.local/bin/clankers-daemon` |
-| macOS | `~/.local/bin/clankers-daemon` |
-| Windows | `%LOCALAPPDATA%\clankers\bin\clankers-daemon.exe` |
+| Linux | `~/.local/bin/clankers` |
+| macOS | `~/.local/bin/clankers` |
+| Windows | `%LOCALAPPDATA%\clankers\bin\clankers.exe` |
 
 If `~/.local/bin` doesn't exist, falls back to `~/bin`.
 
@@ -56,15 +56,15 @@ For Nix/NixOS users, several installation methods are available.
 
 ```bash
 # Run directly without installing
-nix run github:dxta-dev/clankers#clankers-daemon
+nix run github:dxta-dev/clankers#clankers
 
 # Install to profile
-nix profile install github:dxta-dev/clankers#clankers-daemon
+nix profile install github:dxta-dev/clankers#clankers
 ```
 
 ### Flake Input with Overlay
 
-Add to your `flake.nix` to make `clankers-daemon` available in `pkgs`:
+Add to your `flake.nix` to make `clankers` available in `pkgs`:
 
 ```nix
 {
@@ -87,11 +87,11 @@ Add to your `flake.nix` to make `clankers-daemon` available in `pkgs`:
 
         # Your configuration
         ({ config, pkgs, ... }: {
-          # Now pkgs.clankers-daemon is available
-          environment.systemPackages = [ pkgs.clankers-daemon ];
+          # Now pkgs.clankers is available
+          environment.systemPackages = [ pkgs.clankers ];
 
           # Or enable the systemd service
-          services.clankers-daemon.enable = true;
+          services.clankers.enable = true;
         })
       ];
     };
@@ -108,10 +108,10 @@ When working in the clankers repository:
 nix develop
 
 # Build and run the daemon
-nix run .#clankers-daemon
+nix run .#clankers
 
 # Install locally
-nix profile install .#clankers-daemon
+nix profile install .#clankers
 ```
 
 ### NixOS Module Options
@@ -120,28 +120,28 @@ When using `clankers.nixosModules.default`, the following options are available:
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `services.clankers-daemon.enable` | bool | `false` | Enable the daemon service |
-| `services.clankers-daemon.package` | package | `pkgs.clankers-daemon` | Package to use |
-| `services.clankers-daemon.dataRoot` | str | `"%S/clankers"` | Data directory (`%S` = `/var/lib`) |
-| `services.clankers-daemon.dbPath` | str/null | `null` | Explicit DB path (optional) |
-| `services.clankers-daemon.socketPath` | str/null | `null` | Explicit socket path (optional) |
-| `services.clankers-daemon.logLevel` | enum | `"info"` | Log level: debug, info, warn, error |
-| `services.clankers-daemon.user` | str | `"clankers"` | Service user |
-| `services.clankers-daemon.group` | str | `"clankers"` | Service group |
+| `services.clankers.enable` | bool | `false` | Enable the daemon service |
+| `services.clankers.package` | package | `pkgs.clankers` | Package to use |
+| `services.clankers.dataRoot` | str | `"%S/clankers"` | Data directory (`%S` = `/var/lib`) |
+| `services.clankers.dbPath` | str/null | `null` | Explicit DB path (optional) |
+| `services.clankers.socketPath` | str/null | `null` | Explicit socket path (optional) |
+| `services.clankers.logLevel` | enum | `"info"` | Log level: debug, info, warn, error |
+| `services.clankers.user` | str | `"clankers"` | Service user |
+| `services.clankers.group` | str | `"clankers"` | Service group |
 
 ### NixOS Configuration Example
 
 ```nix
 { config, pkgs, ... }: {
   # Enable the daemon as a systemd service
-  services.clankers-daemon = {
+  services.clankers = {
     enable = true;
     logLevel = "debug";
     dataRoot = "/var/lib/clankers";
   };
 
   # Also make it available in user PATH
-  environment.systemPackages = [ pkgs.clankers-daemon ];
+  environment.systemPackages = [ pkgs.clankers ];
 }
 ```
 
@@ -151,11 +151,11 @@ For local development, the flake provides several ways to auto-start the daemon.
 
 ### Dev Shell with Auto-Start (Simplest)
 
-Use the `with-daemon` shell which automatically starts the daemon when you enter and stops it when you exit:
+Use the `with-all-plugins` shell which automatically starts the daemon when you enter and stops it when you exit:
 
 ```bash
 # From the clankers repo
-nix develop .#with-daemon
+nix develop .#with-all-plugins
 
 # Daemon starts automatically with debug logging
 # Data stored in ./.clankers-dev/
@@ -170,8 +170,8 @@ Use the default shell for manual control:
 nix develop
 
 # Shell shows daemon status
-# Start manually: clankers-daemon &
-# Or with options: clankers-daemon --log-level=debug &
+# Start manually: clankers daemon &
+# Or with options: clankers daemon --log-level=debug &
 ```
 
 Environment variables are pre-configured:
@@ -205,11 +205,11 @@ Any changes to the daemon source will be reflected on next `nix run` or `home-ma
 
 | OS | Architecture | Binary |
 |----|--------------|--------|
-| Linux | x86_64 | `linux-amd64-clankers-daemon` |
-| Linux | ARM64 | `linux-arm64-clankers-daemon` |
-| macOS | x86_64 | `darwin-amd64-clankers-daemon` |
-| macOS | ARM64 | `darwin-arm64-clankers-daemon` |
-| Windows | x86_64 | `windows-amd64-clankers-daemon.exe` |
+| Linux | x86_64 | `clankers` |
+| Linux | ARM64 | `clankers` |
+| macOS | x86_64 | `clankers` |
+| macOS | ARM64 | `clankers` |
+| Windows | x86_64 | `clankers.exe` |
 
 Links: [architecture](architecture.md), [daemon-release](../release/daemon-release.md), [npm-packaging](../plans/npm-packaging.md)
 

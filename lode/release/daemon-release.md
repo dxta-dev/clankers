@@ -15,11 +15,11 @@ All binaries are cross-compiled from `ubuntu-latest` using Nix:
 
 | Target | Nix Package | Output |
 |--------|-------------|--------|
-| Linux x86_64 | `clankers-daemon-linux-amd64` | `linux-amd64-clankers-daemon` |
-| Linux ARM64 | `clankers-daemon-linux-arm64` | `linux-arm64-clankers-daemon` |
-| macOS x86_64 | `clankers-daemon-darwin-amd64` | `darwin-amd64-clankers-daemon` |
-| macOS ARM64 | `clankers-daemon-darwin-arm64` | `darwin-arm64-clankers-daemon` |
-| Windows x86_64 | `clankers-daemon-windows-amd64` | `windows-amd64-clankers-daemon.exe` |
+| Linux x86_64 | `clankers-linux-amd64` | `linux-amd64-clankers` |
+| Linux ARM64 | `clankers-linux-arm64` | `linux-arm64-clankers` |
+| macOS x86_64 | `clankers-darwin-amd64` | `darwin-amd64-clankers` |
+| macOS ARM64 | `clankers-darwin-arm64` | `darwin-arm64-clankers` |
+| Windows x86_64 | `clankers-windows-amd64` | `windows-amd64-clankers.exe` |
 
 ## Release Assets
 
@@ -59,7 +59,7 @@ The postinstall script in npm packages downloads the appropriate binary:
 
 ```ts
 const target = `${process.platform}-${process.arch}`;
-const url = `https://github.com/dxta-dev/clankers/releases/download/${version}/${target}-clankers-daemon`;
+const url = `https://github.com/dxta-dev/clankers/releases/download/${version}/${target}-clankers`;
 ```
 
 Links: [npm-release](npm-release.md), [npm-packaging plan](../plans/npm-packaging.md), [ci/overview](../ci/overview.md)

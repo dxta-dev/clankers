@@ -74,7 +74,7 @@ go get github.com/spf13/cobra
 
 ### Step 1.3: Update Main Entry Point
 
-**File**: `packages/daemon/cmd/clankers-daemon/main.go`
+**File**: `packages/daemon/cmd/clankers/main.go`
 
 Change from:
 ```go
@@ -426,7 +426,7 @@ clankers sync pending # Show pending changes count
 
 ### Step 4.5: Integrate with Daemon
 
-**File**: `packages/daemon/cmd/clankers-daemon/main.go`
+**File**: `packages/daemon/cmd/clankers/main.go`
 
 ```go
 func runDaemon(cfg *config.Config) {
@@ -527,7 +527,7 @@ Syncing... 5 sessions, 12 messages uploaded.
 ```bash
 # 1. Build and install CLI
 $ cd packages/daemon
-$ go build -o clankers cmd/clankers-daemon/main.go
+$ go build -o clankers cmd/clankers/main.go
 $ cp clankers /usr/local/bin/
 
 # 2. Start web service
@@ -573,4 +573,3 @@ $ curl https://your-web-service.fly.dev/health
 - View sessions and messages
 - Profile creation UI
 - Analytics dashboard
-

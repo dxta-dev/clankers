@@ -155,7 +155,7 @@ This ensures a single source of truth for log verbosity.
 
 ## Components
 
-### Daemon (`clankers-daemon`)
+### Daemon (`clankers`)
 - Owns log file I/O
 - Implements `log.write` RPC handler
 - Filters entries below configured level

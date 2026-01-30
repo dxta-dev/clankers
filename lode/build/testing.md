@@ -38,7 +38,7 @@ Runs lint, typecheck, and integration as separate checks.
 ./tests/run-integration.sh
 ```
 
-Requires daemon binary available (either via `nix build .#clankers-daemon -o result-daemon`
+Requires daemon binary available (either via `nix build .#clankers -o result-daemon`
 or in PATH).
 
 ## Test Implementation
@@ -75,7 +75,7 @@ integration = pkgs.stdenvNoCC.mkDerivation {
     export CLANKERS_SOCKET_PATH="$TEST_DIR/clankers.sock"
     export CLANKERS_DB_PATH="$TEST_DIR/clankers.db"
     
-    clankers-daemon &
+    clankers daemon &
     # wait for socket...
     pnpm exec tsx tests/integration.ts
     # cleanup...
@@ -86,7 +86,7 @@ integration = pkgs.stdenvNoCC.mkDerivation {
 ```mermaid
 sequenceDiagram
   participant Test as integration.ts
-  participant Daemon as clankers-daemon
+  participant Daemon as clankers
   participant DB as SQLite
   
   Test->>Daemon: health()

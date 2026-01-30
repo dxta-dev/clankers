@@ -8,7 +8,7 @@ Invariants
 - Plugins load from global config, project config, global plugin dir, then project plugin dir.
 - npm plugins are installed via Bun and cached in `~/.cache/opencode/node_modules/`.
 - Hook names match the documented event list (session, message, tool, etc.).
-- Database creation/migrations are handled by the clankers-daemon, not the plugin.
+- Database creation/migrations are handled by the clankers daemon, not the plugin.
 
 Logs
 - OpenCode logs (Linux) live at `~/.local/share/opencode/log/`.

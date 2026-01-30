@@ -42,6 +42,6 @@ Diagram
 ```mermaid
 flowchart LR
   Root[Data root] --> Config[clankers.json]
-  Config --> Daemon[clankers-daemon]
+  Config --> Daemon[clankers]
   Config --> Plugin[plugin process]
 ```

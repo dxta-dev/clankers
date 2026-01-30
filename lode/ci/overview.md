@@ -7,7 +7,7 @@ CI uses Nix for reproducible builds. All checks run via `nix flake check`.
 ```yaml
 - uses: cachix/install-nix-action@v27
 - run: nix flake check
-- run: nix build .#clankers-daemon
+- run: nix build .#clankers
 - run: nix build .#clankers-opencode
 - run: nix build .#clankers-cursor
 - run: nix build .#clankers-claude-code

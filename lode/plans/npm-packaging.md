@@ -21,11 +21,11 @@ Phase 3a complete: Standalone install scripts (`scripts/install-daemon.sh`, `scr
 
 | Nix Package | Platform | Architecture |
 |-------------|----------|--------------|
-| `clankers-daemon-linux-amd64` | Linux | x86_64 |
-| `clankers-daemon-linux-arm64` | Linux | ARM64 |
-| `clankers-daemon-darwin-amd64` | macOS | x86_64 |
-| `clankers-daemon-darwin-arm64` | macOS | ARM64 (Apple Silicon) |
-| `clankers-daemon-windows-amd64` | Windows | x86_64 |
+| `clankers-linux-amd64` | Linux | x86_64 |
+| `clankers-linux-arm64` | Linux | ARM64 |
+| `clankers-darwin-amd64` | macOS | x86_64 |
+| `clankers-darwin-arm64` | macOS | ARM64 (Apple Silicon) |
+| `clankers-windows-amd64` | Windows | x86_64 |
 
 All targets can be built from any host system (cross-compilation via Go).
 
@@ -49,7 +49,7 @@ All targets can be built from any host system (cross-compilation via Go).
 
 Postinstall behavior (documented)
 - Install location: under the Clankers data root or package-local bin dir.
-- Init step: call `clankers-daemon --ensure-db` (preferred) or start daemon
+- Init step: call `clankers daemon --ensure-db` (preferred) or start daemon
   and call `ensureDb` via RPC, then exit.
 - If download fails, log a clear manual install path (e.g. `nix profile install`).
 

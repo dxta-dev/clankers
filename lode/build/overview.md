@@ -11,23 +11,23 @@ for workspace management, while the Go daemon builds with `buildGoModule`.
 
 | Package | Description |
 |---------|-------------|
-| `clankers-daemon` | Go binary for current system |
-| `clankers-daemon-linux-amd64` | Cross-compiled for Linux x86_64 |
-| `clankers-daemon-linux-arm64` | Cross-compiled for Linux ARM64 |
-| `clankers-daemon-darwin-amd64` | Cross-compiled for macOS x86_64 |
-| `clankers-daemon-darwin-arm64` | Cross-compiled for macOS ARM64 |
-| `clankers-daemon-windows-amd64` | Cross-compiled for Windows x86_64 |
+| `clankers` | Go daemon for current system |
+| `clankers-linux-amd64` | Cross-compiled for Linux x86_64 |
+| `clankers-linux-arm64` | Cross-compiled for Linux ARM64 |
+| `clankers-darwin-amd64` | Cross-compiled for macOS x86_64 |
+| `clankers-darwin-arm64` | Cross-compiled for macOS ARM64 |
+| `clankers-windows-amd64` | Cross-compiled for Windows x86_64 |
 | `clankers-opencode` | OpenCode editor plugin |
 | `clankers-cursor` | Cursor editor plugin |
 | `clankers-claude-code` | Claude Code plugin |
 
 ```bash
 # Build daemon for current system
-nix build .#clankers-daemon
+nix build .#clankers
 
 # Build daemon for specific platform (cross-compilation)
-nix build .#clankers-daemon-darwin-arm64
-nix build .#clankers-daemon-windows-amd64
+nix build .#clankers-darwin-arm64
+nix build .#clankers-windows-amd64
 
 # Build TypeScript app
 nix build .#clankers-opencode
@@ -68,8 +68,8 @@ Nix builds with size optimizations for static binaries:
 - `-trimpath` - Remove file paths for reproducibility
 
 ```nix
-clankers-daemon = pkgs.buildGoModule {
-  pname = "clankers-daemon";
+clankers = pkgs.buildGoModule {
+  pname = "clankers";
   src = ./packages/daemon;
   vendorHash = "sha256-...";
   ldflags = [ "-s" "-w" ];
@@ -86,11 +86,11 @@ environment variables during the build phase. Since the daemon uses pure Go
 
 | Target | Binary Name | Format |
 |--------|-------------|--------|
-| linux-amd64 | `clankers-daemon` | ELF 64-bit x86_64 |
-| linux-arm64 | `clankers-daemon` | ELF 64-bit ARM64 |
-| darwin-amd64 | `clankers-daemon` | Mach-O 64-bit x86_64 |
-| darwin-arm64 | `clankers-daemon` | Mach-O 64-bit arm64 |
-| windows-amd64 | `clankers-daemon.exe` | PE32+ x86_64 |
+| linux-amd64 | `clankers` | ELF 64-bit x86_64 |
+| linux-arm64 | `clankers` | ELF 64-bit ARM64 |
+| darwin-amd64 | `clankers` | Mach-O 64-bit x86_64 |
+| darwin-arm64 | `clankers` | Mach-O 64-bit arm64 |
+| windows-amd64 | `clankers.exe` | PE32+ x86_64 |
 
 Cross-compiled builds disable `strip` and `patchELF` fixup phases since these
 tools don't understand foreign binary formats.
@@ -104,7 +104,7 @@ A shared `mkTsApp` helper creates consistent derivations.
 pnpmDeps = pkgs.fetchPnpmDeps {
   pname = "clankers-workspace";
   src = ./.;
-  hash = "sha256-szJy9JkSlOYT7aCa3mfrXajbHDWpTZcQkzQdj7eiW8Q=";
+  hash = "sha256-DLqQOmfunGEXRL60I+nlMTe2H7mLnA+nnzuRFKfbtRY=";
   fetcherVersion = 3;
 };
 ```
@@ -125,7 +125,7 @@ flowchart TB
   Flake[flake.nix]
   
   subgraph Packages
-    Daemon[clankers-daemon]
+    Daemon[clankers]
     subgraph Cross[Cross-compiled daemons]
       Linux[linux-amd64/arm64]
       Darwin[darwin-amd64/arm64]

@@ -1,6 +1,6 @@
 # SQLite storage
 
-The clankers-daemon owns the SQLite database. It creates the schema on startup, enables WAL mode and foreign keys, and handles all writes via JSON-RPC methods. Plugins no longer access SQLite directly.
+The clankers daemon owns the SQLite database. It creates the schema on startup, enables WAL mode and foreign keys, and handles all writes via JSON-RPC methods. Plugins no longer access SQLite directly.
 
 Invariants
 - DB path resolves from the harness-neutral data root (see `storage/paths.md`) and can be overridden via `CLANKERS_DB_PATH`.
@@ -58,7 +58,7 @@ db, err := sql.Open("sqlite", dbPath+"?_journal_mode=WAL&_foreign_keys=ON")
 Diagram
 ```mermaid
 flowchart LR
-  Daemon[clankers-daemon] --> Open[Open DB]
+  Daemon[clankers] --> Open[Open DB]
   Open --> WAL[PRAGMA WAL]
   WAL --> FK[PRAGMA foreign_keys]
   FK --> Ready[Ready for writes]

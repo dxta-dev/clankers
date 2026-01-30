@@ -58,7 +58,7 @@ nix profile install github:dxta-dev/clankers#clankers
 
 ### NixOS Installation
 
-The flake provides multiple integration options:
+The flake provides multiple integration options (package name: `clankers`, NixOS module: `services.clankers`):
 
 **NixOS System Service** (system-wide daemon):
 ```nix

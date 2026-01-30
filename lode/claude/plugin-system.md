@@ -71,7 +71,7 @@ Claude Code executes shell commands for each hook event. Use `${CLAUDE_PLUGIN_RO
 
 ```json
 {
-  "description": "Sync Claude Code sessions to clankers-daemon",
+  "description": "Sync Claude Code sessions to clankers daemon",
   "hooks": {
     "SessionStart": [
       {
@@ -115,7 +115,7 @@ The `.claude-plugin/plugin.json` is required:
 ```json
 {
   "name": "clankers",
-  "description": "Sync Claude Code sessions to clankers-daemon",
+  "description": "Sync Claude Code sessions to clankers daemon",
   "version": "0.1.0",
   "author": {
     "name": "dxta-dev"
@@ -381,7 +381,7 @@ mkdir -p apps/claude-code-plugin/src
 cat > apps/claude-code-plugin/.claude-plugin/plugin.json << 'EOF'
 {
   "name": "clankers",
-  "description": "Sync Claude Code sessions to clankers-daemon",
+  "description": "Sync Claude Code sessions to clankers daemon",
   "version": "0.1.0"
 }
 EOF
@@ -435,7 +435,7 @@ pnpm --filter @dxta-dev/clankers-claude-code build
 
 ```bash
 # Terminal 1: Start daemon
-clankers-daemon &
+clankers daemon &
 
 # Terminal 2: Run Claude Code with plugin
 claude --plugin-dir ./apps/claude-code-plugin
@@ -456,40 +456,11 @@ sqlite3 .clankers-dev/clankers.db "SELECT * FROM sessions;"
 
 ## Nix DevShell Integration
 
-### Pattern for Automated Setup
-
-```nix
-with-claude-plugin = pkgs.mkShell {
-  packages = [ /* node, pnpm, go, daemon */ ];
-  
-  shellHook = ''
-    export CLANKERS_DATA_PATH="$PWD/.clankers-dev"
-    export CLANKERS_SOCKET_PATH="$PWD/.clankers-dev/dxta-clankers.sock"
-    
-    # Create directories
-    mkdir -p "$CLANKERS_DATA_PATH"
-    mkdir -p "$PWD/.claude"
-    
-    # Start daemon
-    clankers-daemon &
-    
-    # Build plugin
-    pnpm --filter @dxta-dev/clankers-claude-code build
-    
-    # Create project config
-    if [ ! -f "$PWD/.claude/settings.json" ]; then
-      echo '{"permissions":{"allow":["Read (./**)"]}}' > "$PWD/.claude/settings.json"
-    fi
-    
-    echo "Run: claude --plugin-dir $PWD/apps/claude-code-plugin"
-  '';
-};
-```
-
-### Entry Point
+The flake provides a single dev shell that builds Claude + OpenCode plugins and
+auto-starts the daemon:
 
 ```bash
-nix develop .#with-claude-plugin
+nix develop .#with-all-plugins
 ```
 
 ## Key Differences from OpenCode

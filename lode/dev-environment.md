@@ -6,9 +6,8 @@ Nix flake provides a reproducible dev shell with all required tooling.
 
 ```bash
 nix develop                    # enter shell (manual daemon)
-nix develop .#with-daemon      # enter shell with auto-started daemon
-nix develop .#with-plugin      # enter shell with plugin built and ready
- direnv allow                   # or use direnv with .envrc
+nix develop .#with-all-plugins # auto-start daemon + build OpenCode/Claude plugins
+direnv allow                   # or use direnv with .envrc
 ```
 
 ## Dev Shell Variants
@@ -16,28 +15,24 @@ nix develop .#with-plugin      # enter shell with plugin built and ready
 | Shell | Description |
 |-------|-------------|
 | `default` | Manual daemon control |
-| `with-plugin` | OpenCode plugin setup (builds + copies to `.opencode/plugins/`) |
-| `with-daemon-and-plugin` | Auto-starts daemon + OpenCode plugin setup |
-| `with-claude-plugin` | Claude Code plugin setup |
-| `with-claude-daemon-and-plugin` | Auto-starts daemon + Claude Code plugin setup |
-| `with-all-plugins` | Auto-starts daemon + all plugins (OpenCode + Claude Code) |
+| `with-all-plugins` | Auto-starts daemon + builds OpenCode + Claude Code plugins |
 
-### with-plugin (Recommended for OpenCode Development)
+### with-all-plugins (Recommended for Active Plugin Development)
 
-The `with-plugin` shell automates the Method 2 setup (project-level plugin development):
+The `with-all-plugins` shell automates local plugin setup and daemon startup:
 
 ```bash
-nix develop .#with-plugin
+nix develop .#with-all-plugins
 ```
 
 On entry, it automatically:
-1. Creates `.opencode/plugins/` directory
-2. Builds the OpenCode plugin (`pnpm build:opencode`)
-3. Copies the built plugin to `.opencode/plugins/clankers.js`
-4. Creates `.opencode/config.json` if it doesn't exist
+1. Starts `clankers daemon` in the background
+2. Builds the OpenCode plugin and copies it to `.opencode/plugins/clankers.js`
+3. Creates `.opencode/config.json` if it doesn't exist
+4. Builds the Claude Code plugin and creates `.claude/settings.json`
 5. Sets up environment variables for the daemon
 
-After entering, restart OpenCode in this directory to load the local plugin.
+After entering, restart OpenCode or Claude Code in this directory to load the local plugins.
 
 **Requirements:** Run `pnpm install` first if dependencies aren't installed.
 
@@ -70,7 +65,7 @@ The shell exports these environment variables:
 |------------|--------------------------------|
 | Node.js 24 | TypeScript runtime             |
 | pnpm       | Workspace package manager      |
-| Go         | clankers-daemon compilation    |
+| Go         | clankers daemon compilation    |
 | SQLite     | Local database CLI             |
 | Biome      | Formatting and linting         |
 | TypeScript | Type checking and LSP          |
@@ -153,25 +148,15 @@ Diagram
 ```mermaid
 flowchart LR
   Flake[flake.nix] --> Shell[nix develop]
-  Flake --> WithPlugin[nix develop .#with-plugin]
-  Flake --> WithDaemonPlugin[nix develop .#with-daemon-and-plugin]
-  Flake --> WithClaude[nix develop .#with-claude-plugin]
-  Flake --> WithClaudeDaemon[nix develop .#with-claude-daemon-and-plugin]
   Flake --> WithAll[nix develop .#with-all-plugins]
   Shell --> Node[Node.js 24]
   Shell --> Go[Go 1.25]
   Shell --> SQLite[SQLite]
   Shell --> Biome[Biome]
-  WithPlugin --> Build[pnpm build:opencode]
-  Build --> Copy[copy to .opencode/plugins/]
+  WithAll --> AutoDaemon[auto-start daemon]
+  WithAll --> BuildOpenCode[pnpm build:opencode]
+  WithAll --> BuildClaude[pnpm build:claude]
+  BuildOpenCode --> Copy[copy to .opencode/plugins/]
   Copy --> Config[create config.json]
-  WithClaude --> BuildClaude[pnpm build:claude]
   BuildClaude --> ClaudeSettings[create .claude/settings.json]
-  WithDaemonPlugin --> AutoDaemon[auto-start daemon]
-  WithDaemonPlugin --> Build
-  WithClaudeDaemon --> AutoDaemon
-  WithClaudeDaemon --> BuildClaude
-  WithAll --> AutoDaemon
-  WithAll --> Build
-  WithAll --> BuildClaude
 ```
