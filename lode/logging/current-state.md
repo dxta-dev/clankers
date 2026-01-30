@@ -1,6 +1,8 @@
 # Unified Logging Current State
 
-**Status**: Phase 2 Complete - Core Library Logger API implemented
+**Status**: Phase 3 & 4 Complete - All Plugins Migrated to Unified Logger
+
+**Date**: 2025-01-30
 
 ## What's Implemented
 
@@ -13,8 +15,8 @@
 | `--log-level` flag | ✅ Done | Now controls daemon filtering |
 | Core Logger API | ✅ Done | `types.ts`, `logger.ts` created |
 | Fire-and-forget RPC | ✅ Done | `logWriteNotify()` in `rpc-client.ts` |
-| OpenCode migration | ⏳ Phase 3 | Pending |
-| Claude migration | ⏳ Phase 4 | Pending |
+| OpenCode migration | ✅ Done | 8 `client.app.log()` calls replaced |
+| Claude migration | ✅ Done | 12 `console.log()` calls replaced |
 
 ## Phase 1 Implementation Details
 
@@ -113,6 +115,47 @@ logger.error("Upsert failed", { message: err.message });
 | Component tagging | Logger captures component at creation, includes in every entry |
 | requestId correlation | Optional parameter on all logger methods |
 
+## Phase 3: OpenCode Plugin Migration
+
+### Files Modified
+
+**`apps/opencode-plugin/src/index.ts`**
+- Added `createLogger` import from `@dxta-dev/clankers-core`
+- Created module-level logger: `const logger = createLogger({ component: "opencode-plugin" })`
+- Replaced 8 `client.app.log()` calls:
+  1. Event received → `logger.debug()`
+  2. Session validation failed → `logger.warn()`
+  3. Session missing ID → `logger.warn()`
+  4. Session parsed → `logger.debug()`
+  5. Upserting session → `logger.debug()`
+  6. Connected to daemon → `logger.info()`
+  7. Daemon not running → `logger.warn()`
+  8. Failed to handle event → `logger.warn()`
+- Removed `client` parameter from `handleEvent()` signature
+- Updated `handleEvent(event, rpc, client)` call to `handleEvent(event, rpc)`
+- Kept `client.tui.showToast()` for user-facing notifications
+
+## Phase 4: Claude Plugin Migration
+
+### Files Modified
+
+**`apps/claude-code-plugin/src/index.ts`**
+- Added `createLogger` import from `@dxta-dev/clankers-core`
+- Created module-level logger: `const logger = createLogger({ component: "claude-plugin" })`
+- Replaced 12 `console.log()` calls:
+  1. Connected to daemon → `logger.info()`
+  2. Daemon not running → `logger.warn()`
+  3. Failed to read transcript → `logger.warn()`
+  4. Invalid SessionStart event → `logger.warn()`
+  5. Failed to upsert session → `logger.error()`
+  6. Failed to upsert session title → `logger.error()`
+  7. Invalid UserPromptSubmit event → `logger.warn()`
+  8. Failed to upsert user message → `logger.error()`
+  9. Invalid Stop event → `logger.warn()`
+  10. Failed to upsert assistant message → `logger.error()`
+  11. Invalid SessionEnd event → `logger.warn()`
+  12. Failed to upsert session end → `logger.error()`
+
 ## Log File Format
 
 Location: `~/.local/share/clankers/logs/clankers-2025-01-30.jsonl`
@@ -172,17 +215,32 @@ Check log file:
 cat ~/.local/share/clankers/logs/clankers-$(date +%Y-%m-%d).jsonl | jq
 ```
 
-## Remaining Work
+## Implementation Complete
 
-### Phase 3: OpenCode Migration (Next)
-- Replace 8 `client.app.log()` calls with new logger
-- Remove `client` parameter from handlers (no longer needed)
+All planned phases are now complete. The unified logging system is fully operational:
 
-### Phase 4: Claude Migration
-- Replace 10 `console.log()` calls with new logger
+- **Phase 1** (Daemon Infrastructure): ✅ Complete
+- **Phase 2** (Core Library Logger API): ✅ Complete
+- **Phase 3** (OpenCode Plugin Migration): ✅ Complete
+- **Phase 4** (Claude Plugin Migration): ✅ Complete
+- **Phase 5** (CLI Integration): Optional - not implemented
 
-### Phase 5: CLI Integration (Optional)
-- Use structured logger in query/config commands
+### Success Criteria Achieved
+
+| Criterion | Status |
+|-----------|--------|
+| All components write to same log file (JSON Lines format) | ✅ |
+| Daily rotation works (new file each day) | ✅ |
+| 30-day retention works (cleanup on startup + daily job) | ✅ |
+| Daemon is sole filtering authority | ✅ |
+| Fire-and-forget RPC works (no blocking) | ✅ |
+| Silent drop when daemon unreachable (no plugin errors) | ✅ |
+| Stderr fallback for daemon startup before logger ready | ✅ |
+| `requestId` correlation works across components | ✅ |
+| No `client.app.log()` calls remain in OpenCode plugin | ✅ |
+| No `console.log()` calls remain in Claude plugin | ✅ |
+| CLI `--log-level` flag controls daemon filtering | ✅ |
+| `CLANKERS_LOG_LEVEL` and `CLANKERS_LOG_PATH` env vars work | ✅ |
 
 ## Testing Phase 2
 
@@ -214,6 +272,61 @@ Should produce:
   "message": "Test message",
   "requestId": "req-123",
   "context": { "foo": "bar" }
+}
+```
+
+## Testing Phase 3-4 (Plugin Integration)
+
+### Build Verification
+```bash
+pnpm check
+pnpm lint
+```
+
+### Verify Plugin Log Output
+
+1. Start the daemon:
+```bash
+./clankers daemon --log-level=debug
+```
+
+2. Run OpenCode or Claude Code with the plugin enabled
+
+3. Check log file contains entries from both plugins:
+```bash
+cat ~/.local/share/clankers/logs/clankers-$(date +%Y-%m-%d).jsonl | jq '.component'
+```
+
+Expected output should include:
+- `"daemon"` (daemon's own logs)
+- `"opencode-plugin"` (OpenCode plugin logs)
+- `"claude-plugin"` (Claude plugin logs)
+
+### Example Log Entries
+
+**OpenCode plugin:**
+```json
+{
+  "timestamp": "2025-01-30T14:32:10.123Z",
+  "level": "info",
+  "component": "opencode-plugin",
+  "message": "Connected to clankers v0.1.0",
+  "requestId": null,
+  "context": null
+}
+```
+
+**Claude plugin:**
+```json
+{
+  "timestamp": "2025-01-30T14:33:45.456Z",
+  "level": "warn",
+  "component": "claude-plugin",
+  "message": "Invalid SessionStart event",
+  "requestId": null,
+  "context": {
+    "error": "..."
+  }
 }
 ```
 

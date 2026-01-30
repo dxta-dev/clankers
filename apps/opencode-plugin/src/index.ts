@@ -3,6 +3,7 @@ import {
 	MessageMetadataSchema,
 	MessagePartSchema,
 	SessionEventSchema,
+	createLogger,
 	createRpcClient,
 	inferRole,
 	scheduleMessageFinalize,
@@ -11,25 +12,18 @@ import {
 	type RpcClient,
 } from "@dxta-dev/clankers-core";
 
+const logger = createLogger({ component: "opencode-plugin" });
+
 const syncedSessions = new Set<string>();
 
 async function handleEvent(
 	event: { type: string; properties?: unknown },
 	rpc: RpcClient,
-	// biome-ignore lint/suspicious/noExplicitAny: debug logging requires flexible typing
-	client: any,
 ) {
 	const props = event.properties as unknown;
 
 	// Debug: log all events
-	void client.app.log({
-		body: {
-			service: "clankers",
-			level: "debug",
-			message: `Event received: ${event.type}`,
-			extra: { properties: props },
-		},
-	});
+	logger.debug(`Event received: ${event.type}`, { properties: props });
 
 	if (
 		event.type === "session.created" ||
@@ -39,49 +33,31 @@ async function handleEvent(
 		const sessionInfo = (props as { info?: unknown })?.info ?? props;
 		const parsed = SessionEventSchema.safeParse(sessionInfo);
 		if (!parsed.success) {
-			void client.app.log({
-				body: {
-					service: "clankers",
-					level: "warn",
-					message: `Session event validation failed: ${parsed.error.message}`,
-					extra: { error: parsed.error.format(), properties: sessionInfo },
-				},
+			logger.warn(`Session event validation failed: ${parsed.error.message}`, {
+				error: parsed.error.format(),
+				properties: sessionInfo,
 			});
 			return;
 		}
 		const session = parsed.data;
 		const sessionId = session.sessionID ?? session.id;
 		if (!sessionId) {
-			void client.app.log({
-				body: {
-					service: "clankers",
-					level: "warn",
-					message: "Session event missing session ID",
-					extra: { properties: props },
-				},
-			});
+			logger.warn("Session event missing session ID", { properties: props });
 			return;
 		}
-		void client.app.log({
-			body: {
-				service: "clankers",
-				level: "debug",
-				message: `Session parsed: ${sessionId}`,
-				extra: {
-					sessionID: sessionId,
-					title: session.title,
-					path: session.path,
-					cwd: session.cwd,
-					directory: session.directory,
-					modelID: session.modelID,
-					model: session.model,
-					providerID: session.providerID,
-					tokens: session.tokens,
-					usage: session.usage,
-					cost: session.cost,
-					time: session.time,
-				},
-			},
+		logger.debug(`Session parsed: ${sessionId}`, {
+			sessionID: sessionId,
+			title: session.title,
+			path: session.path,
+			cwd: session.cwd,
+			directory: session.directory,
+			modelID: session.modelID,
+			model: session.model,
+			providerID: session.providerID,
+			tokens: session.tokens,
+			usage: session.usage,
+			cost: session.cost,
+			time: session.time,
 		});
 		if (event.type === "session.created") {
 			if (syncedSessions.has(sessionId)) return;
@@ -118,14 +94,7 @@ async function handleEvent(
 			updatedAt: session.time?.updated,
 		};
 
-		void client.app.log({
-			body: {
-				service: "clankers",
-				level: "debug",
-			message: `Upserting session: ${sessionId}`,
-				extra: sessionPayload,
-			},
-		});
+		logger.debug(`Upserting session: ${sessionId}`, sessionPayload);
 
 		await rpc.upsertSession(sessionPayload);
 	}
@@ -202,22 +171,11 @@ export const ClankersPlugin: Plugin = async ({ client }) => {
 		const health = await rpc.health();
 		if (health.ok) {
 			connected = true;
-			void client.app.log({
-				body: {
-					service: "clankers",
-					level: "info",
-					message: `Connected to clankers v${health.version}`,
-				},
-			});
+			logger.info(`Connected to clankers v${health.version}`);
 		}
 	} catch (error) {
-		void client.app.log({
-			body: {
-				service: "clankers",
-				level: "warn",
-				message: "Clankers daemon not running; events will be skipped",
-				extra: error instanceof Error ? { message: error.message } : undefined,
-			},
+		logger.warn("Clankers daemon not running; events will be skipped", {
+			error: error instanceof Error ? { message: error.message } : undefined,
 		});
 		void client.tui.showToast({
 			body: {
@@ -231,16 +189,10 @@ export const ClankersPlugin: Plugin = async ({ client }) => {
 		event: async ({ event }) => {
 			if (!connected) return;
 			try {
-				await handleEvent(event, rpc, client);
+				await handleEvent(event, rpc);
 			} catch (error) {
-				void client.app.log({
-					body: {
-						service: "clankers",
-						level: "warn",
-						message: "Failed to handle event",
-						extra:
-							error instanceof Error ? { message: error.message } : undefined,
-					},
+				logger.warn("Failed to handle event", {
+					error: error instanceof Error ? { message: error.message } : undefined,
 				});
 			}
 		},

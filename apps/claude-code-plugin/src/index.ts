@@ -1,4 +1,5 @@
 import {
+	createLogger,
 	createRpcClient,
 	type MessagePayload,
 	type SessionPayload,
@@ -16,6 +17,8 @@ import type {
 	StopEvent,
 	UserPromptEvent,
 } from "./types.js";
+
+const logger = createLogger({ component: "claude-plugin" });
 
 const sessionState = new Map<string, Partial<SessionPayload>>();
 
@@ -162,10 +165,9 @@ async function extractMetadataFromTranscript(
 			}
 		}
 	} catch (error) {
-		console.log(
-			"[clankers] Failed to read transcript:",
-			error instanceof Error ? error.message : String(error),
-		);
+		logger.warn("Failed to read transcript", {
+			error: error instanceof Error ? error.message : String(error),
+		});
 	}
 
 	return result;
@@ -185,14 +187,12 @@ export function createPlugin(): ClaudeCodeHooks | null {
 		.then((health) => {
 			connectionState = health.ok;
 			if (connectionState) {
-				console.log(
-					`[clankers] Connected to clankers v${health.version}`,
-				);
+				logger.info(`Connected to clankers v${health.version}`);
 			}
 			return connectionState;
 		})
 		.catch(() => {
-			console.log("[clankers] Daemon not running; events will be skipped");
+			logger.warn("Daemon not running; events will be skipped");
 			connectionState = false;
 			return false;
 		});
@@ -214,7 +214,7 @@ export function createPlugin(): ClaudeCodeHooks | null {
 
 			const parsed = SessionStartSchema.safeParse(event);
 			if (!parsed.success) {
-				console.log("[clankers] Invalid SessionStart event:", parsed.error.message);
+				logger.warn("Invalid SessionStart event", { error: parsed.error.message });
 				return;
 			}
 
@@ -242,10 +242,9 @@ export function createPlugin(): ClaudeCodeHooks | null {
 					createdAt,
 				});
 			} catch (error) {
-				console.log(
-					"[clankers] Failed to upsert session:",
-					error instanceof Error ? error.message : String(error),
-				);
+				logger.error("Failed to upsert session", {
+					error: error instanceof Error ? error.message : String(error),
+				});
 			}
 		},
 
@@ -255,7 +254,7 @@ export function createPlugin(): ClaudeCodeHooks | null {
 
 			const parsed = UserPromptSchema.safeParse(event);
 			if (!parsed.success) {
-				console.log("[clankers] Invalid UserPromptSubmit event", parsed.error);
+				logger.warn("Invalid UserPromptSubmit event", { error: parsed.error.message });
 				return;
 			}
 
@@ -288,10 +287,9 @@ export function createPlugin(): ClaudeCodeHooks | null {
 							createdAt: currentState.createdAt,
 						});
 					} catch (error) {
-						console.log(
-							"[clankers] Failed to upsert session title:",
-							error instanceof Error ? error.message : String(error),
-						);
+						logger.error("Failed to upsert session title", {
+							error: error instanceof Error ? error.message : String(error),
+						});
 					}
 				}
 			}
@@ -307,10 +305,9 @@ export function createPlugin(): ClaudeCodeHooks | null {
 			try {
 				await rpc.upsertMessage(message);
 			} catch (error) {
-				console.log(
-					"[clankers] Failed to upsert user message:",
-					error instanceof Error ? error.message : String(error),
-				);
+				logger.error("Failed to upsert user message", {
+					error: error instanceof Error ? error.message : String(error),
+				});
 			}
 		},
 
@@ -320,7 +317,7 @@ export function createPlugin(): ClaudeCodeHooks | null {
 
 			const parsed = StopSchema.safeParse(event);
 			if (!parsed.success) {
-				console.log("[clankers] Invalid Stop event", parsed.error);
+				logger.warn("Invalid Stop event", { error: parsed.error.message });
 				return;
 			}
 
@@ -388,10 +385,9 @@ export function createPlugin(): ClaudeCodeHooks | null {
 			try {
 				await rpc.upsertMessage(message);
 			} catch (error) {
-				console.log(
-					"[clankers] Failed to upsert assistant message:",
-					error instanceof Error ? error.message : String(error),
-				);
+				logger.error("Failed to upsert assistant message", {
+					error: error instanceof Error ? error.message : String(error),
+				});
 			}
 		},
 
@@ -401,7 +397,7 @@ export function createPlugin(): ClaudeCodeHooks | null {
 
 			const parsed = SessionEndSchema.safeParse(event);
 			if (!parsed.success) {
-				console.log("[clankers] Invalid SessionEnd event", parsed.error);
+				logger.warn("Invalid SessionEnd event", { error: parsed.error.message });
 				return;
 			}
 
@@ -432,10 +428,9 @@ export function createPlugin(): ClaudeCodeHooks | null {
 			try {
 				await rpc.upsertSession(finalSession);
 			} catch (error) {
-				console.log(
-					"[clankers] Failed to upsert session end:",
-					error instanceof Error ? error.message : String(error),
-				);
+				logger.error("Failed to upsert session end", {
+					error: error instanceof Error ? error.message : String(error),
+				});
 			}
 
 			sessionState.delete(sessionId);

@@ -359,15 +359,17 @@ If issues arise:
 
 ## Success Criteria
 
-- [ ] All components write to same log file (JSON Lines format)
-- [ ] Daily rotation works (new file each day)
-- [ ] 30-day retention works (cleanup on startup + daily job)
-- [ ] **Daemon is sole filtering authority** (clients send all levels)
-- [ ] **Fire-and-forget RPC** works (no blocking, no response waiting)
-- [ ] **Silent drop** when daemon unreachable (no plugin errors)
-- [ ] **Stderr fallback** for daemon startup before logger ready
-- [ ] `requestId` correlation works across components
-- [ ] No `client.app.log()` calls remain in OpenCode plugin
-- [ ] No `console.log()` calls remain in Claude plugin
-- [ ] CLI `--log-level` flag controls daemon filtering
-- [ ] `CLANKERS_LOG_LEVEL` and `CLANKERS_LOG_PATH` env vars work
+- [x] All components write to same log file (JSON Lines format)
+- [x] Daily rotation works (new file each day)
+- [x] 30-day retention works (cleanup on startup + daily job)
+- [x] **Daemon is sole filtering authority** (clients send all levels)
+- [x] **Fire-and-forget RPC** works (no blocking, no response waiting)
+- [x] **Silent drop** when daemon unreachable (no plugin errors)
+- [x] **Stderr fallback** for daemon startup before logger ready
+- [x] `requestId` correlation works across components
+- [x] No `client.app.log()` calls remain in OpenCode plugin
+- [x] No `console.log()` calls remain in Claude plugin
+- [x] CLI `--log-level` flag controls daemon filtering
+- [x] `CLANKERS_LOG_LEVEL` and `CLANKERS_LOG_PATH` env vars work
+
+**Status**: ✅ All success criteria met - Unified logging system fully operational

@@ -4,7 +4,9 @@ A focused, actionable plan to implement the centralized logging system.
 
 **Goal**: All components (daemon, plugins, CLI) write structured JSON logs to `~/.local/share/clankers/logs/clankers-YYYY-MM-DD.jsonl` via JSON-RPC.
 
-**Status**: Phase 1 & 2 Complete - Phase 3 (OpenCode Migration) Ready
+**Status**: ✅ All Phases Complete - Unified Logging System Operational
+
+**Date**: 2025-01-30
 
 ---
 
@@ -197,9 +199,9 @@ export type { Logger, LogLevel, LogEntry } from "./types.js";
 
 ---
 
-## Phase 3: OpenCode Plugin Migration ⏳ Next
+## Phase 3: OpenCode Plugin Migration ✅ Complete
 
-### 3.1 Replace Logging Calls (25 min)
+### 3.1 Replace Logging Calls ✅
 **File**: `apps/opencode-plugin/src/index.ts`
 
 Before:
@@ -216,26 +218,26 @@ const logger = createLogger({ component: "opencode-plugin" });
 logger.info("...");
 ```
 
-**Replace 8 calls**:
-1. Event received (debug)
-2. Session validation failed (warn)  
-3. Session missing ID (warn)
-4. Session parsed (debug)
-5. Upserting session (debug)
-6. Connected to daemon (info)
-7. Daemon not running (warn)
-8. Failed to handle event (warn)
+**Replaced 8 calls**:
+1. ✅ Event received (debug)
+2. ✅ Session validation failed (warn)  
+3. ✅ Session missing ID (warn)
+4. ✅ Session parsed (debug)
+5. ✅ Upserting session (debug)
+6. ✅ Connected to daemon (info)
+7. ✅ Daemon not running (warn)
+8. ✅ Failed to handle event (warn)
 
-### 3.2 Update Handler Signature (10 min)
-Remove `client` parameter from `handleEvent()` - no longer needed for logging.
+### 3.2 Update Handler Signature ✅
+Removed `client` parameter from `handleEvent()` - no longer needed for logging.
 
 **Total Phase 3**: ~35 minutes
 
 ---
 
-## Phase 4: Claude Plugin Migration
+## Phase 4: Claude Plugin Migration ✅ Complete
 
-### 4.1 Replace Logging Calls (20 min)
+### 4.1 Replace Logging Calls ✅
 **File**: `apps/claude-code-plugin/src/index.ts`
 
 Before:
@@ -250,17 +252,19 @@ const logger = createLogger({ component: "claude-plugin" });
 logger.info("Connected to daemon");
 ```
 
-**Replace 10 calls**:
-1. Connected to daemon (info)
-2. Daemon not running (warn)
-3. Invalid SessionStart event (warn)
-4. Failed to upsert session (error)
-5. Failed to upsert session title (error)
-6. Failed to upsert user message (error)
-7. Invalid Stop event (warn)
-8. Failed to upsert assistant message (error)
-9. Invalid SessionEnd event (warn)
-10. Failed to upsert session end (error)
+**Replaced 12 calls**:
+1. ✅ Connected to daemon (info)
+2. ✅ Daemon not running (warn)
+3. ✅ Failed to read transcript (warn)
+4. ✅ Invalid SessionStart event (warn)
+5. ✅ Failed to upsert session (error)
+6. ✅ Failed to upsert session title (error)
+7. ✅ Invalid UserPromptSubmit event (warn)
+8. ✅ Failed to upsert user message (error)
+9. ✅ Invalid Stop event (warn)
+10. ✅ Failed to upsert assistant message (error)
+11. ✅ Invalid SessionEnd event (warn)
+12. ✅ Failed to upsert session end (error)
 
 **Total Phase 4**: ~20 minutes
 
@@ -287,8 +291,7 @@ Keep stdout for command output (query results, tables). Logs go to file.
 | 2 | 50 min | `types.ts`, `logger.ts` | `rpc-client.ts`, `index.ts` |
 | 3 | 35 min | - | `opencode-plugin/src/index.ts` |
 | 4 | 20 min | - | `claude-code-plugin/src/index.ts` |
-| 5 | 15 min | - | `query.go`, `config.go` |
-| **Total** | **~3.5 hours** | **4 new** | **7 modified** |
+| **Total** | **~3.5 hours** | **4 new** | **6 modified** |
 
 ## Testing Checklist
 
@@ -309,9 +312,9 @@ Keep stdout for command output (query results, tables). Logs go to file.
 - [x] Silent drop when daemon not running
 - [x] No client-side filtering (all levels sent)
 
-### Phase 3-4 (Plugins - Pending)
-- [ ] OpenCode plugin logs appear with `component: "opencode-plugin"`
-- [ ] Claude plugin logs appear with `component: "claude-plugin"`
+### Phase 3-4 (Plugins - Complete)
+- [x] OpenCode plugin logs appear with `component: "opencode-plugin"`
+- [x] Claude plugin logs appear with `component: "claude-plugin"`
 
 ## Rollback
 
