@@ -1,9 +1,11 @@
 package paths
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
+	"time"
 )
 
 const (
@@ -11,6 +13,7 @@ const (
 	defaultDBFile     = "clankers.db"
 	defaultConfigFile = "clankers.json"
 	defaultSocketName = "dxta-clankers.sock"
+	logDirName        = "logs"
 )
 
 // Linux: $XDG_DATA_HOME or ~/.local/share
@@ -61,4 +64,16 @@ func GetSocketPath() string {
 		return `\\.\pipe\dxta-clankers`
 	}
 	return filepath.Join(GetDataDir(), defaultSocketName)
+}
+
+func GetLogDir() string {
+	if v := os.Getenv("CLANKERS_LOG_PATH"); v != "" {
+		return v
+	}
+	return filepath.Join(GetDataDir(), logDirName)
+}
+
+func GetCurrentLogFile() string {
+	date := time.Now().Format("2006-01-02")
+	return filepath.Join(GetLogDir(), fmt.Sprintf("clankers-%s.jsonl", date))
 }

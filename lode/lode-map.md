@@ -17,6 +17,8 @@
 - [storage/paths](storage/paths.md)
 - logging/
   - [logging/architecture](logging/architecture.md)
+  - [logging/current-state](logging/current-state.md)
+  - [logging/implementation-plan](logging/implementation-plan.md)
 - ingestion/
   - [ingestion/aggregation](ingestion/aggregation.md)
 - daemon/

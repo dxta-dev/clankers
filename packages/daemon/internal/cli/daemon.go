@@ -12,6 +12,7 @@ import (
 	"strings"
 	"syscall"
 
+	"github.com/dxta-dev/clankers/internal/logging"
 	"github.com/dxta-dev/clankers/internal/paths"
 	"github.com/dxta-dev/clankers/internal/rpc"
 	"github.com/dxta-dev/clankers/internal/storage"
@@ -63,7 +64,20 @@ and accepts JSON-RPC requests from editor plugins.`,
 				socketPath = paths.GetSocketPath()
 			}
 
-			_ = logLevel // Reserved for future log level implementation
+			// Initialize structured logger
+			logger, err := logging.New(logLevel, paths.GetLogDir())
+			if err != nil {
+				// Fall back to stderr logging on error
+				log.Printf("failed to initialize logger: %v", err)
+				log.Printf("falling back to stderr logging only")
+			} else {
+				defer logger.Close()
+				logger.Infof("daemon", "daemon starting with log level %s", logLevel)
+			}
+
+			// Start cleanup job for old log files
+			cleanupStop := logging.StartCleanupJob(paths.GetLogDir())
+			defer close(cleanupStop)
 
 			resolvedDbPath := paths.GetDbPath()
 			created, err := storage.EnsureDb(resolvedDbPath)
@@ -71,7 +85,11 @@ and accepts JSON-RPC requests from editor plugins.`,
 				return fmt.Errorf("failed to ensure database: %w", err)
 			}
 			if created {
-				log.Printf("created database at %s", resolvedDbPath)
+				if logger != nil {
+					logger.Infof("daemon", "created database at %s", resolvedDbPath)
+				} else {
+					log.Printf("created database at %s", resolvedDbPath)
+				}
 			}
 
 			store, err := storage.Open(resolvedDbPath)
@@ -90,13 +108,21 @@ and accepts JSON-RPC requests from editor plugins.`,
 				if err != nil {
 					return fmt.Errorf("failed to listen: %w", err)
 				}
-				log.Printf("listening on %s", listener.Addr())
+				if logger != nil {
+					logger.Infof("daemon", "listening on %s", listener.Addr())
+				} else {
+					log.Printf("listening on %s", listener.Addr())
+				}
 			} else {
 				listener, err = net.Listen("unix", socketPath)
 				if err != nil {
 					return fmt.Errorf("failed to listen on %s: %w", socketPath, err)
 				}
-				log.Printf("listening on %s", socketPath)
+				if logger != nil {
+					logger.Infof("daemon", "listening on %s", socketPath)
+				} else {
+					log.Printf("listening on %s", socketPath)
+				}
 			}
 
 			ctx, cancel := context.WithCancel(context.Background())
@@ -106,12 +132,16 @@ and accepts JSON-RPC requests from editor plugins.`,
 			signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
 			go func() {
 				<-sigCh
-				log.Println("shutting down...")
+				if logger != nil {
+					logger.Infof("daemon", "shutting down...")
+				} else {
+					log.Println("shutting down...")
+				}
 				cancel()
 				listener.Close()
 			}()
 
-			handler := rpc.NewHandler(store)
+			handler := rpc.NewHandler(store, logger)
 			for {
 				conn, err := listener.Accept()
 				if err != nil {
@@ -119,7 +149,11 @@ and accepts JSON-RPC requests from editor plugins.`,
 					case <-ctx.Done():
 						return nil
 					default:
-						log.Printf("accept error: %v", err)
+						if logger != nil {
+							logger.Warnf("daemon", "accept error: %v", err)
+						} else {
+							log.Printf("accept error: %v", err)
+						}
 						continue
 					}
 				}
