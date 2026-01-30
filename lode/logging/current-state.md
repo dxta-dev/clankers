@@ -1,6 +1,6 @@
 # Unified Logging Current State
 
-**Status**: Phase 3 & 4 Complete - All Plugins Migrated to Unified Logger
+**Status**: ✅ DONE - All Phases Complete with Unit Tests
 
 **Date**: 2025-01-30
 
@@ -17,6 +17,8 @@
 | Fire-and-forget RPC | ✅ Done | `logWriteNotify()` in `rpc-client.ts` |
 | OpenCode migration | ✅ Done | 8 `client.app.log()` calls replaced |
 | Claude migration | ✅ Done | 12 `console.log()` calls replaced |
+| Go unit tests | ✅ Done | 28 tests in `logging_test.go` + `cleanup_test.go` |
+| TypeScript unit tests | ✅ Done | 19 tests in `logger.test.ts` |
 
 ## Phase 1 Implementation Details
 
@@ -198,7 +200,41 @@ Location: `~/.local/share/clankers/logs/clankers-2025-01-30.jsonl`
 - Close log file
 - Stderr fallback for any late messages
 
-## Testing Phase 1
+## Testing
+
+### Unit Tests
+
+**Go tests (daemon logging package):**
+```bash
+cd packages/daemon && go test ./internal/logging/... -v
+```
+
+Covers:
+- `TestNew` - Logger initialization, directory creation, file handling
+- `TestParseLogLevel` - Level string parsing (case insensitive)
+- `TestShouldDrop` - Level filtering logic (16 level combinations)
+- `TestWrite` - JSON entry writing, filtering, context preservation
+- `TestConvenienceMethods` - Debugf/Infof/Warnf/Errorf helpers
+- `TestClose` - Proper cleanup, multiple close safety
+- `TestCleanupOldLogs` - 30-day retention, file pattern matching
+- `TestStartCleanupJob` - Background job lifecycle
+- `TestRetentionDays` - Constant validation
+- `TestCleanupFileNamePattern` - File matching rules
+
+**TypeScript tests (core logger):**
+```bash
+cd packages/core && pnpm test
+```
+
+Covers:
+- Logger creation with component name
+- All log level methods (debug, info, warn, error)
+- Log entry structure (timestamp, component, context, requestId)
+- Fire-and-forget behavior (no throw on error, no waiting)
+- Multiple log calls independence
+- Edge cases (empty messages, special characters, nested context)
+
+### Manual Testing
 
 Build verification:
 ```bash
@@ -241,6 +277,8 @@ All planned phases are now complete. The unified logging system is fully operati
 | No `console.log()` calls remain in Claude plugin | ✅ |
 | CLI `--log-level` flag controls daemon filtering | ✅ |
 | `CLANKERS_LOG_LEVEL` and `CLANKERS_LOG_PATH` env vars work | ✅ |
+| Unit tests for daemon logging (Go) | ✅ 28 tests |
+| Unit tests for core logger (TypeScript) | ✅ 19 tests |
 
 ## Testing Phase 2
 

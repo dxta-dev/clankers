@@ -45,7 +45,11 @@ export function createLogger(options: LoggerOptions): Logger {
 
 		// Fire-and-forget: never throws, never waits
 		// Silently drops if daemon unreachable
-		rpc.logWriteNotify(entry);
+		try {
+			rpc.logWriteNotify(entry);
+		} catch {
+			// Silently drop - logging must not break plugins
+		}
 	};
 
 	return {

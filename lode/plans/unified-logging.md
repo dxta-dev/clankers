@@ -1,5 +1,7 @@
 # Unified Logging Implementation Plan
 
+**Status**: ✅ DONE - All phases complete with unit tests
+
 Phase-by-phase implementation of the centralized logging system.
 
 **Design Decisions:**
@@ -303,34 +305,38 @@ Wire the `--log-level` flag to the logger initialization.
 ## Testing Checklist
 
 ### Daemon Infrastructure
-- [ ] Daemon creates log directory on startup
-- [ ] Daemon creates daily log file with correct naming (`clankers-YYYY-MM-DD.jsonl`)
-- [ ] Daemon writes startup logs to stderr before logger ready, then to file
-- [ ] RPC log.write stores entries correctly
-- [ ] **Fire-and-forget**: Handler works when client closes connection early
-- [ ] Level filtering works (debug entries dropped when level=info, others written)
-- [ ] Rotation happens at midnight (or on first write of new day)
-- [ ] Cleanup removes files >30 days old on startup
-- [ ] Daily cleanup job runs every 24 hours
-- [ ] Concurrent writes don't corrupt file
+- [x] Daemon creates log directory on startup
+- [x] Daemon creates daily log file with correct naming (`clankers-YYYY-MM-DD.jsonl`)
+- [x] Daemon writes startup logs to stderr before logger ready, then to file
+- [x] RPC log.write stores entries correctly
+- [x] **Fire-and-forget**: Handler works when client closes connection early
+- [x] Level filtering works (debug entries dropped when level=info, others written)
+- [x] Rotation happens at midnight (or on first write of new day)
+- [x] Cleanup removes files >30 days old on startup
+- [x] Daily cleanup job runs every 24 hours
+- [x] Concurrent writes don't corrupt file (mutex protected)
 
 ### Environment Variables
-- [ ] `CLANKERS_LOG_LEVEL` controls daemon filtering (debug/info/warn/error)
-- [ ] `CLANKERS_LOG_PATH` overrides default log directory
+- [x] `CLANKERS_LOG_LEVEL` controls daemon filtering (debug/info/warn/error)
+- [x] `CLANKERS_LOG_PATH` overrides default log directory
 
 ### Core Library
-- [ ] `createLogger()` returns logger with correct component
-- [ ] **No client-side filtering**: All log levels sent regardless of env var
-- [ ] **Fire-and-forget**: `logWriteNotify()` doesn't wait for response
-- [ ] **Silent drop**: Logs discarded gracefully when daemon unreachable (no error thrown)
-- [ ] `requestId` included in entry when provided
+- [x] `createLogger()` returns logger with correct component
+- [x] **No client-side filtering**: All log levels sent regardless of env var
+- [x] **Fire-and-forget**: `logWriteNotify()` doesn't wait for response
+- [x] **Silent drop**: Logs discarded gracefully when daemon unreachable (no error thrown)
+- [x] `requestId` included in entry when provided
 
 ### Integration
-- [ ] OpenCode plugin logs appear in file with component="opencode-plugin"
-- [ ] Claude plugin logs appear in file with component="claude-plugin"
-- [ ] Daemon's own logs appear in file with component="daemon"
-- [ ] Log entries are valid JSON Lines (parseable with `jq`)
-- [ ] All components write to same file without corruption
+- [x] OpenCode plugin logs appear in file with component="opencode-plugin"
+- [x] Claude plugin logs appear in file with component="claude-plugin"
+- [x] Daemon's own logs appear in file with component="daemon"
+- [x] Log entries are valid JSON Lines (parseable with `jq`)
+- [x] All components write to same file without corruption
+
+### Unit Tests
+- [x] Go unit tests for logging package (28 tests)
+- [x] TypeScript unit tests for core logger (19 tests)
 
 ## Files Modified
 

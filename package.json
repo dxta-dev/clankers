@@ -9,7 +9,10 @@
 		"build:cursor": "pnpm --filter @dxta-dev/clankers-cursor build",
 		"check": "tsc --noEmit",
 		"lint": "biome lint .",
-		"format": "biome format --write ."
+		"format": "biome format --write .",
+		"test": "pnpm test:go && pnpm test:ts",
+		"test:go": "cd packages/daemon && go test ./...",
+		"test:ts": "pnpm --filter @dxta-dev/clankers-core test"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "2.3.11",

@@ -15,13 +15,37 @@ operational guide for agentic coding work.
 - Build a single app: `pnpm build:opencode`, `pnpm build:cursor`, `pnpm build:claude`
 - Release workflow publishes TypeScript sources without a build step.
 
-### Running a Single Test
-- There is no unit test runner configured (TypeScript or Go).
-- No `*_test.go` files are present.
-- Integration test exists at `tests/integration.ts` - run with:
-  - `bash tests/run-integration.sh` (starts daemon and runs tests)
-  - Or manually: `pnpm exec tsx tests/integration.ts` (requires `CLANKERS_SOCKET_PATH` env var)
-- If you add unit tests, add a script and document a single-test command here.
+### Running Tests
+
+**All tests:**
+```bash
+pnpm test              # Run Go + TypeScript tests
+```
+
+**Go tests only:**
+```bash
+pnpm test:go           # Run all Go unit tests
+# Or:
+cd packages/daemon && go test ./...           # All tests
+cd packages/daemon && go test ./internal/logging/... -v   # Specific package with verbose output
+cd packages/daemon && go test ./internal/logging/... -run TestNew   # Single test
+```
+
+**TypeScript tests only:**
+```bash
+pnpm test:ts           # Run core library tests
+# Or:
+cd packages/core && pnpm test              # Run all tests
+cd packages/core && pnpm test:watch        # Watch mode
+cd packages/core && pnpm exec vitest run -t "logger creation"   # Run tests matching pattern
+```
+
+**Integration tests:**
+```bash
+bash tests/run-integration.sh              # Full integration test (starts daemon)
+# Or manually (requires running daemon):
+CLANKERS_SOCKET_PATH=/tmp/test.sock pnpm exec tsx tests/integration.ts
+```
 
 ## Cursor/Copilot Rules
 - No `.cursor/rules/`, `.cursorrules`, or `.github/copilot-instructions.md` files found.
@@ -143,5 +167,5 @@ if (!parsed.success) return;
 - Preserve existing API surfaces; this plugin is event-driven.
 
 ## Gaps / TODO for Future Agents
-- No tests are currently configured; add tests with a runner if needed.
 - If you add a build step, confirm release workflow expectations.
+- Add more comprehensive RPC handler tests (requires mock daemon or test doubles).

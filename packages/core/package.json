@@ -9,7 +9,14 @@
 		}
 	},
 	"files": ["src"],
+	"scripts": {
+		"test": "vitest run",
+		"test:watch": "vitest"
+	},
 	"dependencies": {
 		"zod": "4.3.5"
+	},
+	"devDependencies": {
+		"vitest": "^3.0.0"
 	}
 }
