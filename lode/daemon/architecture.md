@@ -11,7 +11,7 @@ Invariants
 - Benign connection errors ("connection reset by peer", "broken pipe") are filtered from logs to prevent UI noise in OpenCode.
 
 Socket location
-- Linux/macOS: `$CLANKERS_DATA_PATH/clankers/dxta-clankers.sock` or `~/.local/share/clankers/dxta-clankers.sock`
+- Linux/macOS: `$CLANKERS_DATA_PATH/dxta-clankers.sock` (if env var set) or `~/.local/share/clankers/dxta-clankers.sock`
 - Windows: `\\.\pipe\dxta-clankers`
 - Override via `CLANKERS_SOCKET_PATH`
 
