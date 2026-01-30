@@ -18,12 +18,12 @@
 
       clankersOverlay = final: prev: {
         clankers-daemon = final.callPackage (
-          { buildGoModule }:
+          { buildGoModule, lib }:
           buildGoModule {
             pname = "clankers-daemon";
             version = "0.1.0";
             src = ./packages/daemon;
-            vendorHash = "sha256-L8CHwPOjwE+DOJ1OWi0/V+tYrB2ev3iN9VU7i8WmCN0=";
+            vendorHash = "sha256-e8w2sXRMbrTCnwpCiNFCKAIxznIIxG/Frwdqn1KG1HQ=";
 
             ldflags = [
               "-s"
@@ -145,7 +145,7 @@
                       (lib.optionalString (cfg.socketPath != null) "--socket=${cfg.socketPath}")
                     ];
                   in
-                  "${cfg.package}/bin/clankers-daemon ${args}";
+                  "${cfg.package}/bin/clankers-daemon daemon ${args}";
 
                 Restart = "on-failure";
                 RestartSec = 5;
@@ -213,7 +213,7 @@
             pname = "clankers-workspace";
             version = "0.1.0";
             src = ./.;
-            hash = "sha256-szJy9JkSlOYT7aCa3mfrXajbHDWpTZcQkzQdj7eiW8Q=";
+            hash = "sha256-DLqQOmfunGEXRL60I+nlMTe2H7mLnA+nnzuRFKfbtRY=";
             fetcherVersion = 3;
           };
 
@@ -267,7 +267,7 @@
               pname = "clankers-daemon-${name}";
               version = "0.1.0";
               src = ./packages/daemon;
-              vendorHash = "sha256-L8CHwPOjwE+DOJ1OWi0/V+tYrB2ev3iN9VU7i8WmCN0=";
+              vendorHash = "sha256-e8w2sXRMbrTCnwpCiNFCKAIxznIIxG/Frwdqn1KG1HQ=";
 
               ldflags = [
                 "-s"
@@ -319,7 +319,7 @@
             pname = "clankers-daemon";
             version = "0.1.0";
             src = ./packages/daemon;
-            vendorHash = "sha256-L8CHwPOjwE+DOJ1OWi0/V+tYrB2ev3iN9VU7i8WmCN0=";
+            vendorHash = "sha256-e8w2sXRMbrTCnwpCiNFCKAIxznIIxG/Frwdqn1KG1HQ=";
 
             ldflags = [
               "-s"
@@ -369,13 +369,45 @@
             pname = "clankers-workspace";
             version = "0.1.0";
             src = ./.;
-            hash = "sha256-szJy9JkSlOYT7aCa3mfrXajbHDWpTZcQkzQdj7eiW8Q=";
+            hash = "sha256-DLqQOmfunGEXRL60I+nlMTe2H7mLnA+nnzuRFKfbtRY=";
             fetcherVersion = 3;
           };
 
           daemon = self.packages.${system}.clankers-daemon;
         in
         {
+          go-tests = pkgs.buildGoModule {
+            pname = "clankers-go-tests";
+            version = "0.1.0";
+            src = ./packages/daemon;
+            vendorHash = "sha256-e8w2sXRMbrTCnwpCiNFCKAIxznIIxG/Frwdqn1KG1HQ=";
+
+            ldflags = [
+              "-s"
+              "-w"
+            ];
+
+            checkPhase = ''
+              runHook preCheck
+              export HOME=$(mktemp -d)
+              go test -v ./internal/config/... ./internal/paths/... ./internal/storage/...
+              runHook postCheck
+            '';
+
+            doCheck = true;
+
+            # Skip install phase since we only want to run tests
+            installPhase = ''
+              runHook preInstall
+              mkdir -p $out
+              runHook postInstall
+            '';
+
+            meta = {
+              description = "Go unit tests for clankers daemon";
+            };
+          };
+
           lint = pkgs.stdenvNoCC.mkDerivation {
             name = "clankers-lint";
             src = ./.;
@@ -445,7 +477,7 @@
               echo "  Socket: $CLANKERS_SOCKET_PATH"
               echo "  DB: $CLANKERS_DB_PATH"
 
-              clankers-daemon &
+              clankers-daemon daemon &
               DAEMON_PID=$!
 
               # Wait for socket to be ready
@@ -514,7 +546,7 @@
               echo "  DB: $CLANKERS_DB_PATH"
               echo ""
               echo "Commands:"
-              echo "  clankers-daemon                   - Start daemon manually"
+              echo "  clankers-daemon daemon            - Start daemon manually"
               echo "  clankers-daemon --help            - Show daemon options"
               echo ""
               echo "Quick start (recommended):"
@@ -534,7 +566,7 @@
               if [ -S "$CLANKERS_SOCKET_PATH" ]; then
                 echo "Daemon appears to be running (socket exists)"
               else
-                echo "Daemon not running. Start with: clankers-daemon &"
+                echo "Daemon not running. Start with: clankers-daemon daemon &"
               fi
             '';
           };
@@ -593,7 +625,7 @@
                 echo "Daemon appears to be running (socket exists)"
               else
                 echo ""
-                echo "Daemon not running. Start with: clankers-daemon &"
+                echo "Daemon not running. Start with: clankers-daemon daemon &"
               fi
 
               echo ""
@@ -644,7 +676,7 @@
 
               # Start daemon in background
               echo "Starting clankers-daemon..."
-              clankers-daemon --log-level=debug &
+              clankers-daemon daemon --log-level=debug &
               DAEMON_PID=$!
 
               # Store PID for cleanup
@@ -789,7 +821,7 @@
                               echo "Daemon appears to be running (socket exists)"
                             else
                               echo ""
-                              echo "Daemon not running. Start with: clankers-daemon &"
+                              echo "Daemon not running. Start with: clankers-daemon daemon &"
                             fi
 
                             echo ""
@@ -841,7 +873,7 @@
 
                             # Start daemon in background
                             echo "Starting clankers-daemon..."
-                            clankers-daemon --log-level=debug &
+                            clankers-daemon daemon --log-level=debug &
                             DAEMON_PID=$!
 
                             # Store PID for cleanup
@@ -968,7 +1000,7 @@
 
                             # Start daemon in background
                             echo "Starting clankers-daemon..."
-                            clankers-daemon --log-level=debug &
+                            clankers-daemon daemon --log-level=debug &
                             DAEMON_PID=$!
 
                             # Store PID for cleanup

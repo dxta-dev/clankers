@@ -6,7 +6,21 @@
 
 ## Implementation Status
 
-✅ **All Go Unit Tests Complete** - 25 tests implemented across config, paths, and storage packages.
+✅ **All Go Unit Tests Complete** - 25 tests implemented across config, paths, and storage packages.  
+✅ **Nix Flake Check Integrated** - Run `nix flake check` to execute all Go unit tests.
+
+### Running Tests
+
+```bash
+# Run all Go unit tests (native)
+cd packages/daemon && go test ./internal/...
+
+# Run as part of nix flake check
+nix flake check
+
+# Build/run specific check
+nix build .#checks.x86_64-linux.go-tests
+```
 
 ---
 
