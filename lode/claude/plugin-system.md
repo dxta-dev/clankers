@@ -15,30 +15,36 @@ Claude Code supports multiple plugin patterns:
 
 For clankers, we use the **programmatic pattern** for direct RPC client integration.
 
-## Programmatic Plugin Structure
+## Plugin Structure
+
+Claude Code plugins use **shell-based hooks** that receive event data via stdin. The clankers plugin uses a Node.js runner script that bridges shell hooks to TypeScript handlers.
 
 ```mermaid
 flowchart TB
-    subgraph "Plugin Entry"
-        A[index.ts] --> B[createPlugin]
-        B --> C[Hook Handlers]
+    subgraph "Claude Code"
+        A[Hook Event] --> B[hooks.json]
     end
-    
-    subgraph "Hook Handlers"
-        C --> D[SessionStart]
-        C --> E[UserPromptSubmit]
-        C --> F[Stop]
-        C --> G[SessionEnd]
+
+    subgraph "Shell Hook Layer"
+        B --> C[runner.mjs]
+        C --> D[createPlugin]
     end
-    
+
+    subgraph "Plugin Handlers"
+        D --> E[SessionStart]
+        D --> F[UserPromptSubmit]
+        D --> G[Stop]
+        D --> H[SessionEnd]
+    end
+
     subgraph "Core Integration"
-        H[RPC Client] --> I[Daemon]
+        I[RPC Client] --> J[Daemon]
     end
-    
-    D --> H
-    E --> H
-    F --> H
-    G --> H
+
+    E --> I
+    F --> I
+    G --> I
+    H --> I
 ```
 
 ### Required Files
@@ -47,11 +53,59 @@ flowchart TB
 my-plugin/
 ├── .claude-plugin/
 │   └── plugin.json          # Plugin manifest (required)
+├── hooks/
+│   ├── hooks.json           # Shell hook configuration (required for hooks)
+│   └── runner.mjs           # Node.js script to bridge to TypeScript
+├── dist/
+│   └── index.js             # Bundled plugin (esbuild output)
 ├── src/
 │   ├── index.ts             # Main entry, exports createPlugin()
 │   ├── schemas.ts           # Zod validation schemas
 │   └── types.ts             # TypeScript interfaces
 └── package.json
+```
+
+### hooks/hooks.json
+
+Claude Code executes shell commands for each hook event. Use `${CLAUDE_PLUGIN_ROOT}` for paths:
+
+```json
+{
+  "description": "Sync Claude Code sessions to clankers-daemon",
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node ${CLAUDE_PLUGIN_ROOT}/hooks/runner.mjs SessionStart"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+### hooks/runner.mjs
+
+Bridges shell stdin to TypeScript plugin:
+
+```javascript
+#!/usr/bin/env node
+import { createPlugin } from '../dist/index.js';
+
+const hookName = process.argv[2];
+let inputData = '';
+
+process.stdin.setEncoding('utf8');
+process.stdin.on('data', (chunk) => inputData += chunk);
+process.stdin.on('end', async () => {
+  const event = JSON.parse(inputData);
+  const plugin = createPlugin();
+  await plugin?.[hookName]?.(event);
+  process.exit(0);
+});
 ```
 
 ### Plugin Manifest
@@ -77,25 +131,47 @@ The entry point must export a `createPlugin` function:
 
 ```typescript
 export function createPlugin(): ClaudeCodeHooks | null {
-  // Initialize connections
   const rpc = createRpcClient({
     clientName: "claude-code-plugin",
     clientVersion: "0.1.0"
   });
-  
-  // Return hook handlers
+
+  // Connection state with async initialization
+  let connectionState: boolean | null = null;
+  let connectionPromise: Promise<boolean> | null = null;
+
+  // Start health check immediately (non-blocking)
+  connectionPromise = rpc.health()
+    .then((health) => {
+      connectionState = health.ok;
+      return connectionState;
+    })
+    .catch(() => {
+      connectionState = false;
+      return false;
+    });
+
+  // Hooks must await connection before processing
+  async function waitForConnection(): Promise<boolean> {
+    if (connectionState !== null) return connectionState;
+    if (connectionPromise) return connectionPromise;
+    return false;
+  }
+
   return {
-    SessionStart: async (event) => { /* ... */ },
-    UserPromptSubmit: async (event) => { /* ... */ },
-    Stop: async (event) => { /* ... */ },
-    SessionEnd: async (event) => { /* ... */ },
+    SessionStart: async (event) => {
+      const connected = await waitForConnection();
+      if (!connected) return;
+      // Process event...
+    },
+    // ... other hooks follow same pattern
   };
 }
 
 export default createPlugin;
 ```
 
-Return `null` if the plugin cannot initialize (e.g., daemon not running).
+**Important**: Hooks must `await waitForConnection()` to avoid race conditions. The daemon connection is async, so early events would be dropped without this pattern.
 
 ## Available Hooks
 
@@ -111,13 +187,15 @@ Return `null` if the plugin cannot initialize (e.g., daemon not running).
 
 ### Hook Event Schemas
 
+**Note**: `permission_mode` is documented but NOT sent by Claude Code in practice. All schemas make it optional.
+
 ```typescript
-// SessionStart
+// SessionStart - actual event from Claude Code
 interface SessionStartEvent {
   session_id: string;
   transcript_path: string;
   cwd: string;
-  permission_mode: string;
+  permission_mode?: string;  // Optional - not sent by Claude
   hook_event_name: "SessionStart";
   source: "startup" | "resume" | "clear" | "compact";
   model?: string;
@@ -128,7 +206,7 @@ interface UserPromptEvent {
   session_id: string;
   transcript_path: string;
   cwd: string;
-  permission_mode: string;
+  permission_mode?: string;  // Optional - not sent by Claude
   hook_event_name: "UserPromptSubmit";
   prompt: string;
 }
@@ -138,7 +216,7 @@ interface StopEvent {
   session_id: string;
   transcript_path: string;
   cwd: string;
-  permission_mode: string;
+  permission_mode?: string;  // Optional - not sent by Claude
   hook_event_name: "Stop";
   response?: string;
   tokenUsage?: { input: number; output: number };
@@ -152,7 +230,7 @@ interface SessionEndEvent {
   session_id: string;
   transcript_path: string;
   cwd: string;
-  permission_mode: string;
+  permission_mode?: string;  // Optional - not sent by Claude
   hook_event_name: "SessionEnd";
   reason: "clear" | "logout" | "prompt_input_exit" | "other";
   messageCount?: number;
@@ -470,7 +548,22 @@ Hook names are case-sensitive:
 
 Claude Code copies plugins to a cache directory. External file references (like `../shared-utils`) won't work after installation. Use `${CLAUDE_PLUGIN_ROOT}` environment variable for paths.
 
-### 5. Async Handler Errors
+### 5. Connection Race Condition
+
+If daemon connection is checked async but hooks return early when not connected, early events are silently dropped. Always await connection:
+
+```typescript
+// ❌ Wrong: events dropped during async health check
+let connected = false;
+rpc.health().then(() => { connected = true; });
+// SessionStart fires before connected=true
+
+// ✅ Correct: await connection before processing
+const connected = await waitForConnection();
+if (!connected) return;
+```
+
+### 6. Async Handler Errors
 
 Unhandled errors in hook handlers can crash the plugin. Always wrap in try-catch:
 

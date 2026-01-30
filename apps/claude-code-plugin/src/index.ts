@@ -1,7 +1,6 @@
 import {
 	createRpcClient,
 	type MessagePayload,
-	type RpcClient,
 	type SessionPayload,
 } from "@dxta-dev/clankers-core";
 import {
@@ -41,40 +40,47 @@ export function createPlugin(): ClaudeCodeHooks | null {
 		clientVersion: "0.1.0",
 	});
 
-	let connected = false;
+	// Connection state: null = pending, true = connected, false = failed
+	let connectionState: boolean | null = null;
+	let connectionPromise: Promise<boolean> | null = null;
 
-	// Health check on startup - synchronously check if daemon is available
-	try {
-		const healthResult = rpc.health();
-		if (healthResult instanceof Promise) {
-			healthResult
-				.then((health) => {
-					connected = health.ok;
-					if (connected) {
-						console.log(
-							`[clankers] Connected to clankers-daemon v${health.version}`,
-						);
-					}
-				})
-				.catch(() => {
-					console.log("[clankers] Daemon not running; events will be skipped");
-				});
+	// Start health check immediately
+	connectionPromise = rpc
+		.health()
+		.then((health) => {
+			connectionState = health.ok;
+			if (connectionState) {
+				console.log(
+					`[clankers] Connected to clankers-daemon v${health.version}`,
+				);
+			}
+			return connectionState;
+		})
+		.catch(() => {
+			console.log("[clankers] Daemon not running; events will be skipped");
+			connectionState = false;
+			return false;
+		});
+
+	// Helper to wait for connection before processing events
+	async function waitForConnection(): Promise<boolean> {
+		if (connectionState !== null) {
+			return connectionState;
 		}
-	} catch {
-		console.log("[clankers] Daemon not running; events will be skipped");
-		return null;
+		if (connectionPromise) {
+			return connectionPromise;
+		}
+		return false;
 	}
-
-	// If we're not connected, still return the hooks but they will be no-ops
-	// This allows the plugin to load gracefully even without the daemon
 
 	return {
 		SessionStart: async (event: SessionStartEvent) => {
+			const connected = await waitForConnection();
 			if (!connected) return;
 
 			const parsed = SessionStartSchema.safeParse(event);
 			if (!parsed.success) {
-				console.log("[clankers] Invalid SessionStart event", parsed.error);
+				console.log("[clankers] Invalid SessionStart event:", parsed.error.message);
 				return;
 			}
 
@@ -108,6 +114,7 @@ export function createPlugin(): ClaudeCodeHooks | null {
 		},
 
 		UserPromptSubmit: async (event: UserPromptEvent) => {
+			const connected = await waitForConnection();
 			if (!connected) return;
 
 			const parsed = UserPromptSchema.safeParse(event);
@@ -145,6 +152,7 @@ export function createPlugin(): ClaudeCodeHooks | null {
 		},
 
 		Stop: async (event: StopEvent) => {
+			const connected = await waitForConnection();
 			if (!connected) return;
 
 			const parsed = StopSchema.safeParse(event);
@@ -205,6 +213,7 @@ export function createPlugin(): ClaudeCodeHooks | null {
 		},
 
 		SessionEnd: async (event: SessionEndEvent) => {
+			const connected = await waitForConnection();
 			if (!connected) return;
 
 			const parsed = SessionEndSchema.safeParse(event);

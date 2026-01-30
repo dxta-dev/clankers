@@ -2,7 +2,7 @@ Clankers is a pnpm monorepo with app packages for OpenCode, Cursor, and Claude C
 
 Plugin Status:
 - ✅ OpenCode Plugin: Complete (event-based, sessions/messages working)
-- ✅ Claude Code Plugin: Complete (programmatic hooks, `createPlugin()` pattern)
+- ✅ Claude Code Plugin: Complete (shell-based hooks via `hooks.json` + `runner.mjs` bridge to TypeScript)
 - ❌ Cursor Plugin: Not implemented (placeholder exists)
 
 Links: [terminology](terminology.md), [practices](practices.md), [schemas](data-model/schemas.md), [opencode/plugins](opencode/plugins.md), [claude/plugin-system](claude/plugin-system.md), [event-handling](opencode/event-handling.md), [sqlite](storage/sqlite.md), [paths](storage/paths.md), [aggregation](ingestion/aggregation.md), [daemon](daemon/architecture.md)
