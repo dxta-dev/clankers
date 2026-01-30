@@ -9,7 +9,7 @@ CLI / Daemon Status (Phase 1):
 - ✅ Config System: Profile-based config with `internal/config/` package
 - ✅ CLI Structure: Cobra-based commands with breaking change (explicit `clankers daemon` required)
 - ✅ Config Commands: `config set/get/list/profiles` implemented
-- ⏳ Daemon Command: Pending (Step 5)
+- ✅ Daemon Command: `clankers daemon` with flags (`--socket`, `--data-root`, `--db-path`, `--log-level`)
 - ⏳ Query Command: Future (Phase 2)
 - ⏳ Sync Command: Future (Phase 4)
 

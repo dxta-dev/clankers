@@ -7,9 +7,9 @@ The clankers CLI provides both daemon mode and interactive commands for local da
 | Phase | Status | Files |
 |-------|--------|-------|
 | Config Package | ✅ Complete | `internal/config/config.go` |
-| CLI Structure (cobra) | ✅ Complete | `internal/cli/root.go`, `internal/cli/config.go` |
+| CLI Structure (cobra) | ✅ Complete | `internal/cli/root.go`, `internal/cli/config.go`, `internal/cli/daemon.go` |
 | Config Commands | ✅ Complete | `config set`, `config get`, `config list`, `config profiles` |
-| Daemon Command | ⏳ Pending | `internal/cli/daemon.go` |
+| Daemon Command | ✅ Complete | `clankers daemon` with all flags |
 | Query Command | ⏳ Future | Phase 2 |
 | Sync Command | ⏳ Future | Phase 4 |
 
@@ -234,7 +234,7 @@ Uses [spf13/cobra](https://github.com/spf13/cobra) for command structure.
 **File organization:**
 - `root.go` - Root command, global flags, subcommand registration
 - `config.go` - All config subcommands (set, get, list, profiles)
-- `daemon.go` - Daemon subcommand (Step 5, pending)
+- `daemon.go` - Daemon subcommand (daemon startup, socket handling, JSON-RPC)
 
 **Root command behavior:**
 ```go
@@ -256,6 +256,22 @@ config
     ├── list [--format json]
     └── use <name>
 ```
+
+**Daemon command:**
+```bash
+clankers daemon                    # Start daemon with defaults
+clankers daemon --socket /path     # Custom socket path
+clankers daemon --data-root /path  # Custom data directory
+clankers daemon --db-path /path    # Custom database path
+clankers daemon --log-level debug  # Set log level
+```
+
+The daemon command includes all the original daemon startup logic:
+- Database initialization (`storage.EnsureDb`, `storage.Open`)
+- Unix socket (macOS/Linux) or TCP (Windows) listener setup
+- JSON-RPC connection handling with `serveConn()`
+- Signal handling for graceful shutdown (SIGINT, SIGTERM)
+- Log filtering for common connection errors
 
 ### Config File Location
 
