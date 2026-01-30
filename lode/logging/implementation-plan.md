@@ -4,9 +4,11 @@ A focused, actionable plan to implement the centralized logging system.
 
 **Goal**: All components (daemon, plugins, CLI) write structured JSON logs to `~/.local/share/clankers/logs/clankers-YYYY-MM-DD.jsonl` via JSON-RPC.
 
+**Status**: Phase 1 & 2 Complete - Phase 3 (OpenCode Migration) Ready
+
 ---
 
-## Phase 1: Daemon Infrastructure
+## Phase 1: Daemon Infrastructure ✅
 
 ### 1.1 Add Log Paths (10 min)
 **File**: `packages/daemon/internal/paths/paths.go`
@@ -83,7 +85,7 @@ Changes:
 
 ---
 
-## Phase 2: Core Library Logger API
+## Phase 2: Core Library Logger API ✅
 
 ### 2.1 Add Log Types (10 min)
 **File**: `packages/core/src/types.ts` (new file)
@@ -195,7 +197,7 @@ export type { Logger, LogLevel, LogEntry } from "./types.js";
 
 ---
 
-## Phase 3: OpenCode Plugin Migration
+## Phase 3: OpenCode Plugin Migration ⏳ Next
 
 ### 3.1 Replace Logging Calls (25 min)
 **File**: `apps/opencode-plugin/src/index.ts`
@@ -290,18 +292,26 @@ Keep stdout for command output (query results, tables). Logs go to file.
 
 ## Testing Checklist
 
-- [ ] Daemon creates `logs/` directory on startup
-- [ ] Log file created: `clankers-2025-01-30.jsonl`
-- [ ] Log entries are valid JSON Lines
-- [ ] `CLANKERS_LOG_LEVEL=debug` shows debug entries
-- [ ] `CLANKERS_LOG_LEVEL=info` drops debug entries
-- [ ] `CLANKERS_LOG_PATH` overrides log directory
+### Phase 1 (Daemon)
+- [x] Daemon creates `logs/` directory on startup
+- [x] Log file created: `clankers-2025-01-30.jsonl`
+- [x] Log entries are valid JSON Lines
+- [x] `CLANKERS_LOG_LEVEL=debug` shows debug entries
+- [x] `CLANKERS_LOG_LEVEL=info` drops debug entries
+- [x] `CLANKERS_LOG_PATH` overrides log directory
+- [x] Daemon logs appear with `component: "daemon"`
+- [x] 30-day cleanup removes old files
+
+### Phase 2 (Core Library)
+- [x] `createLogger()` returns logger with correct component
+- [x] `logWrite()` standard RPC call works
+- [x] `logWriteNotify()` fire-and-forget works (no blocking)
+- [x] Silent drop when daemon not running
+- [x] No client-side filtering (all levels sent)
+
+### Phase 3-4 (Plugins - Pending)
 - [ ] OpenCode plugin logs appear with `component: "opencode-plugin"`
 - [ ] Claude plugin logs appear with `component: "claude-plugin"`
-- [ ] Daemon logs appear with `component: "daemon"`
-- [ ] Fire-and-forget works (no blocking)
-- [ ] Silent drop when daemon not running
-- [ ] 30-day cleanup removes old files
 
 ## Rollback
 

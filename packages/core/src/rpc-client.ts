@@ -1,6 +1,7 @@
 import { createConnection } from "node:net";
 import { homedir } from "node:os";
 import { join } from "node:path";
+import type { LogEntry } from "./types.js";
 
 const SOCKET_NAME = "dxta-clankers.sock";
 const CONTENT_LENGTH_HEADER = "Content-Length: ";
@@ -235,6 +236,47 @@ export function createRpcClient(options: RpcClientOptions) {
 			return rpcCall<OkResult>("upsertMessage", {
 				...envelope,
 				message,
+			});
+		},
+
+		async logWrite(entry: LogEntry): Promise<OkResult> {
+			return rpcCall<OkResult>("log.write", {
+				...envelope,
+				entry: {
+					...entry,
+					timestamp: new Date().toISOString(),
+				},
+			});
+		},
+
+		logWriteNotify(entry: LogEntry): void {
+			const socketPath = getSocketPath();
+
+			const request = {
+				jsonrpc: "2.0",
+				id: `notify-${Date.now()}`,
+				method: "log.write",
+				params: {
+					...envelope,
+					entry: {
+						...entry,
+						timestamp: new Date().toISOString(),
+					},
+				},
+			};
+
+			const socket = createConnection(socketPath);
+
+			socket.on("connect", () => {
+				const body = JSON.stringify(request);
+				socket.write(
+					`${CONTENT_LENGTH_HEADER}${Buffer.byteLength(body)}\r\n\r\n${body}`,
+				);
+				socket.end();
+			});
+
+			socket.on("error", () => {
+				// Silently drop - logging must not break plugins
 			});
 		},
 	};

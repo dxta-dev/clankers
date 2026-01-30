@@ -1,6 +1,6 @@
 # Unified Logging Current State
 
-**Status**: Phase 1 Complete - Daemon Infrastructure implemented
+**Status**: Phase 2 Complete - Core Library Logger API implemented
 
 ## What's Implemented
 
@@ -11,8 +11,8 @@
 | Daily rotation | ✅ Done | Automatic rotation on date change |
 | 30-day cleanup | ✅ Done | Background job runs on startup + daily |
 | `--log-level` flag | ✅ Done | Now controls daemon filtering |
-| Core Logger API | ⏳ Phase 2 | Pending |
-| Fire-and-forget RPC | ⏳ Phase 2 | Pending |
+| Core Logger API | ✅ Done | `types.ts`, `logger.ts` created |
+| Fire-and-forget RPC | ✅ Done | `logWriteNotify()` in `rpc-client.ts` |
 | OpenCode migration | ⏳ Phase 3 | Pending |
 | Claude migration | ⏳ Phase 4 | Pending |
 
@@ -57,6 +57,61 @@
    - Use logger for daemon's own logs (with stderr fallback if logger fails)
    - `--log-level` flag now functional (defaults to "info")
    - Proper cleanup on shutdown (close cleanup channel, close logger)
+
+## Phase 2 Implementation Details
+
+### Files Created
+
+6. **`packages/core/src/types.ts`**
+   - `LogLevel` type: `"debug" | "info" | "warn" | "error"`
+   - `LogEntry` interface with timestamp, level, component, message, requestId, context
+   - `Logger` interface with debug/info/warn/error methods
+   - `LoggerOptions` interface with component name
+   - Documentation: daemon is sole authority for filtering
+
+7. **`packages/core/src/logger.ts`**
+   - `createLogger(options)` factory function
+   - Creates internal RPC client with component name
+   - `sendLog()` helper - builds LogEntry with timestamp
+   - Fire-and-forget via `rpc.logWriteNotify()`
+   - Silent drop on daemon unreachable (no errors)
+   - No client-side filtering (sends all levels)
+
+### Files Modified
+
+8. **`packages/core/src/rpc-client.ts`**
+   - Added `logWrite(entry)` - standard async RPC call (waits for response)
+   - Added `logWriteNotify(entry)` - fire-and-forget variant
+   - Fire-and-forget: creates socket, writes, ends immediately
+   - Silent error handling (drops if daemon unreachable)
+   - Auto-adds timestamp to entries
+
+9. **`packages/core/src/index.ts`**
+   - Exports `createLogger` from `./logger.js`
+   - Exports `Logger`, `LogLevel`, `LogEntry`, `LoggerOptions` types
+
+### TypeScript Logger API Usage
+
+```typescript
+import { createLogger } from "@dxta-dev/clankers-core";
+
+const logger = createLogger({ component: "opencode-plugin" });
+
+logger.debug("Detailed info", { event: "session.created" });
+logger.info("Connected", { version: "0.1.0" });
+logger.warn("Validation failed", { error: "missing id" });
+logger.error("Upsert failed", { message: err.message });
+```
+
+### Design Principles Enforced
+
+| Principle | Implementation |
+|-----------|----------------|
+| Daemon controls filtering | No minLevel in LoggerOptions; clients send all levels |
+| Fire-and-forget | `logWriteNotify()` closes socket immediately after write |
+| Silent drop | Error handler on socket does nothing |
+| Component tagging | Logger captures component at creation, includes in every entry |
+| requestId correlation | Optional parameter on all logger methods |
 
 ## Log File Format
 
@@ -119,20 +174,48 @@ cat ~/.local/share/clankers/logs/clankers-$(date +%Y-%m-%d).jsonl | jq
 
 ## Remaining Work
 
-### Phase 2: Core Library (Next)
-- Add `types.ts` with `LogLevel`, `LogEntry`, `Logger` types
-- Add `logWrite()` and `logWriteNotify()` to `rpc-client.ts`
-- Create `logger.ts` with `createLogger()` factory
-- Export from `index.ts`
-
-### Phase 3: OpenCode Migration
+### Phase 3: OpenCode Migration (Next)
 - Replace 8 `client.app.log()` calls with new logger
+- Remove `client` parameter from handlers (no longer needed)
 
 ### Phase 4: Claude Migration
 - Replace 10 `console.log()` calls with new logger
 
 ### Phase 5: CLI Integration (Optional)
 - Use structured logger in query/config commands
+
+## Testing Phase 2
+
+Build verification:
+```bash
+pnpm check
+pnpm lint
+```
+
+Logger usage test:
+```typescript
+import { createLogger } from "@dxta-dev/clankers-core";
+
+const logger = createLogger({ component: "test" });
+logger.info("Test message", { foo: "bar" }, "req-123");
+```
+
+Expected log file output (when daemon is running):
+```bash
+cat ~/.local/share/clankers/logs/clankers-$(date +%Y-%m-%d).jsonl | jq
+```
+
+Should produce:
+```json
+{
+  "timestamp": "2025-01-30T12:00:00.000Z",
+  "level": "info",
+  "component": "test",
+  "message": "Test message",
+  "requestId": "req-123",
+  "context": { "foo": "bar" }
+}
+```
 
 ## Links
 
