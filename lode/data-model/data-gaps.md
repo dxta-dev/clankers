@@ -3,10 +3,11 @@
 Clankers stores sessions and messages from OpenCode and Claude Code, but each source emits different fields and timings. As a result, some columns are intentionally nullable or defaulted, and later upserts can overwrite earlier values.
 
 Invariants
-- The daemon upserts overwrite all session/message columns with the incoming payload.
+- The daemon upserts preserve stable fields (`title`, `model`, `provider`, `source` for sessions; `text_content`, `source` for messages) when the incoming value is empty.
+- `created_at` is immutable after first write; subsequent upserts do not overwrite it.
 - Session defaults applied by the daemon: `title = "Untitled Session"`, `prompt_tokens = 0`, `completion_tokens = 0`, `cost = 0` when missing.
 - Message defaults applied by the daemon: `prompt_tokens = 0`, `completion_tokens = 0` when missing.
-- Source/harness is not stored in the schema; only `model`/`provider` hint at origin.
+- `source` column identifies the originating client: `"opencode"` or `"claude-code"`.
 
 ## Data availability by source
 
@@ -42,14 +43,14 @@ Messages
 
 ## Edge cases and missing data
 
-- **No source attribution**: The DB schema has no `source`/`harness` column. `provider`/`model` can hint at origin but are not reliable across clients.
-- **Partial upserts overwrite prior fields**: Later upserts replace all columns. Any omitted fields become NULL or defaulted (0/"Untitled Session") in the stored row. This is why Claude `SessionEnd` can wipe title/model created during `SessionStart`.
+- ~~**No source attribution**: The DB schema has no `source`/`harness` column.~~ **RESOLVED**: `source` column added; plugins send `"opencode"` or `"claude-code"`.
+- ~~**Partial upserts overwrite prior fields**: Later upserts replace all columns.~~ **RESOLVED**: Stable fields (`title`, `model`, `provider`, `source`, `created_at`) are preserved when the incoming value is empty.
 - **OpenCode message aggregation requires both metadata and text parts**: If either `message.updated` or `message.part.updated` is missing, or the text part is empty/whitespace, the message is dropped.
 - **OpenCode stores only text parts**: Non-text parts are ignored; if the client sends incremental text deltas, only the latest staged text is kept.
 - **Claude metadata comes from transcript parsing**: The Stop hook event does NOT include model/tokens/duration fields. The plugin reads the transcript JSONL file to extract this data. If transcript parsing fails, these fields default to NULL/0.
 - **Claude assistant content may be empty**: If transcript parsing fails or the assistant message has no text blocks, the response is stored as empty string.
 - **Claude stop hook recursion**: `stop_hook_active` events are ignored, so assistant messages can be skipped if the hook re-enters.
-- **Generated message IDs can collide**: IDs use `Date.now()`; multiple messages in the same millisecond for the same session+role can collide and be dropped as duplicates.
+- ~~**Generated message IDs can collide**: IDs use `Date.now()`.~~ **RESOLVED**: Claude Code plugin now uses monotonic counter (`${sessionId}-${role}-${count}`).
 - **Claude token counts include cache tokens**: `prompt_tokens` is calculated as `input_tokens + cache_creation_input_tokens + cache_read_input_tokens` to reflect total input token usage.
 
 Links: [schemas](schemas.md), [sqlite](../storage/sqlite.md), [opencode event handling](../opencode/event-handling.md), [claude plugin system](../claude/plugin-system.md), [claude data mapping](../claude/data-mapping.md)
@@ -62,6 +63,7 @@ await rpc.upsertSession({
 	projectPath: data.cwd,
 	projectName: getProjectName(data.cwd),
 	provider: "anthropic",
+	source: "claude-code",
 	title: currentState.title,
 	model: currentState.model,
 	createdAt: currentState.createdAt,
@@ -77,8 +79,8 @@ Diagram
 flowchart LR
   OpenCode[OpenCode events] --> OCPlugin[OpenCode plugin]
   Claude[Claude hooks] --> CCPlugin[Claude Code plugin]
-  OCPlugin --> Rpc[RPC upsert]
-  CCPlugin --> Rpc
+  OCPlugin -->|source: opencode| Rpc[RPC upsert]
+  CCPlugin -->|source: claude-code| Rpc
   Rpc --> SQLite[(sessions/messages)]
-  SQLite --> Gaps[NULL/defaulted fields when omitted]
+  SQLite --> Preserved[Stable fields preserved on re-upsert]
 ```

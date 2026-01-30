@@ -18,6 +18,7 @@ CREATE TABLE IF NOT EXISTS sessions (
 	project_name TEXT,
 	model TEXT,
 	provider TEXT,
+	source TEXT,
 	prompt_tokens INTEGER,
 	completion_tokens INTEGER,
 	cost REAL,
@@ -31,6 +32,7 @@ CREATE TABLE IF NOT EXISTS messages (
 	role TEXT,
 	text_content TEXT,
 	model TEXT,
+	source TEXT,
 	prompt_tokens INTEGER,
 	completion_tokens INTEGER,
 	duration_ms INTEGER,
@@ -42,38 +44,46 @@ CREATE TABLE IF NOT EXISTS messages (
 
 const upsertSessionSQL = `
 INSERT INTO sessions (
-	id, title, project_path, project_name, model, provider,
+	id, title, project_path, project_name, model, provider, source,
 	prompt_tokens, completion_tokens, cost, created_at, updated_at
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 ON CONFLICT(id) DO UPDATE SET
-	title=excluded.title,
-	project_path=excluded.project_path,
-	project_name=excluded.project_name,
-	model=excluded.model,
-	provider=excluded.provider,
-	prompt_tokens=excluded.prompt_tokens,
-	completion_tokens=excluded.completion_tokens,
-	cost=excluded.cost,
-	created_at=excluded.created_at,
-	updated_at=excluded.updated_at;
+	title = CASE WHEN excluded.title IS NOT NULL AND excluded.title != ''
+	             THEN excluded.title ELSE sessions.title END,
+	model = CASE WHEN excluded.model IS NOT NULL AND excluded.model != ''
+	             THEN excluded.model ELSE sessions.model END,
+	provider = CASE WHEN excluded.provider IS NOT NULL AND excluded.provider != ''
+	                THEN excluded.provider ELSE sessions.provider END,
+	source = CASE WHEN excluded.source IS NOT NULL AND excluded.source != ''
+	              THEN excluded.source ELSE sessions.source END,
+	created_at = COALESCE(sessions.created_at, excluded.created_at),
+	project_path = excluded.project_path,
+	project_name = excluded.project_name,
+	prompt_tokens = excluded.prompt_tokens,
+	completion_tokens = excluded.completion_tokens,
+	cost = excluded.cost,
+	updated_at = excluded.updated_at;
 `
 
 const upsertMessageSQL = `
 INSERT INTO messages (
-	id, session_id, role, text_content, model,
+	id, session_id, role, text_content, model, source,
 	prompt_tokens, completion_tokens, duration_ms,
 	created_at, completed_at
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 ON CONFLICT(id) DO UPDATE SET
-	session_id=excluded.session_id,
-	role=excluded.role,
-	text_content=excluded.text_content,
-	model=excluded.model,
-	prompt_tokens=excluded.prompt_tokens,
-	completion_tokens=excluded.completion_tokens,
-	duration_ms=excluded.duration_ms,
-	created_at=excluded.created_at,
-	completed_at=excluded.completed_at;
+	text_content = CASE WHEN excluded.text_content IS NOT NULL AND excluded.text_content != ''
+	                    THEN excluded.text_content ELSE messages.text_content END,
+	source = CASE WHEN excluded.source IS NOT NULL AND excluded.source != ''
+	              THEN excluded.source ELSE messages.source END,
+	created_at = COALESCE(messages.created_at, excluded.created_at),
+	session_id = excluded.session_id,
+	role = excluded.role,
+	model = excluded.model,
+	prompt_tokens = excluded.prompt_tokens,
+	completion_tokens = excluded.completion_tokens,
+	duration_ms = excluded.duration_ms,
+	completed_at = excluded.completed_at;
 `
 
 type Store struct {
@@ -89,6 +99,7 @@ type Session struct {
 	ProjectName      *string  `json:"projectName,omitempty"`
 	Model            *string  `json:"model,omitempty"`
 	Provider         *string  `json:"provider,omitempty"`
+	Source           *string  `json:"source,omitempty"`
 	PromptTokens     *int64   `json:"promptTokens,omitempty"`
 	CompletionTokens *int64   `json:"completionTokens,omitempty"`
 	Cost             *float64 `json:"cost,omitempty"`
@@ -102,6 +113,7 @@ type Message struct {
 	Role             string  `json:"role"`
 	TextContent      string  `json:"textContent"`
 	Model            *string `json:"model,omitempty"`
+	Source           *string `json:"source,omitempty"`
 	PromptTokens     *int64  `json:"promptTokens,omitempty"`
 	CompletionTokens *int64  `json:"completionTokens,omitempty"`
 	DurationMs       *int64  `json:"durationMs,omitempty"`
@@ -190,6 +202,7 @@ func (s *Store) UpsertSession(session *Session) error {
 		session.ProjectName,
 		session.Model,
 		session.Provider,
+		session.Source,
 		promptTokens,
 		completionTokens,
 		cost,
@@ -215,6 +228,7 @@ func (s *Store) UpsertMessage(msg *Message) error {
 		msg.Role,
 		msg.TextContent,
 		msg.Model,
+		msg.Source,
 		promptTokens,
 		completionTokens,
 		msg.DurationMs,
@@ -225,7 +239,7 @@ func (s *Store) UpsertMessage(msg *Message) error {
 }
 
 func (s *Store) GetSessions(limit int) ([]Session, error) {
-	query := `SELECT id, title, project_path, project_name, model, provider,
+	query := `SELECT id, title, project_path, project_name, model, provider, source,
 		prompt_tokens, completion_tokens, cost, created_at, updated_at
 		FROM sessions ORDER BY created_at DESC`
 	if limit > 0 {
@@ -246,6 +260,7 @@ func (s *Store) GetSessions(limit int) ([]Session, error) {
 		var projectName sql.NullString
 		var model sql.NullString
 		var provider sql.NullString
+		var source sql.NullString
 		var promptTokens sql.NullInt64
 		var completionTokens sql.NullInt64
 		var cost sql.NullFloat64
@@ -253,7 +268,7 @@ func (s *Store) GetSessions(limit int) ([]Session, error) {
 		var updatedAt sql.NullInt64
 
 		err := rows.Scan(
-			&s.ID, &title, &projectPath, &projectName, &model, &provider,
+			&s.ID, &title, &projectPath, &projectName, &model, &provider, &source,
 			&promptTokens, &completionTokens, &cost, &createdAt, &updatedAt,
 		)
 		if err != nil {
@@ -274,6 +289,9 @@ func (s *Store) GetSessions(limit int) ([]Session, error) {
 		}
 		if provider.Valid {
 			s.Provider = &provider.String
+		}
+		if source.Valid {
+			s.Source = &source.String
 		}
 		if promptTokens.Valid {
 			s.PromptTokens = &promptTokens.Int64
@@ -304,6 +322,7 @@ func (s *Store) GetSessionByID(id string) (*Session, []Message, error) {
 	var projectName sql.NullString
 	var model sql.NullString
 	var provider sql.NullString
+	var source sql.NullString
 	var promptTokens sql.NullInt64
 	var completionTokens sql.NullInt64
 	var cost sql.NullFloat64
@@ -311,10 +330,10 @@ func (s *Store) GetSessionByID(id string) (*Session, []Message, error) {
 	var updatedAt sql.NullInt64
 
 	err := s.db.QueryRow(`
-		SELECT id, title, project_path, project_name, model, provider,
+		SELECT id, title, project_path, project_name, model, provider, source,
 			prompt_tokens, completion_tokens, cost, created_at, updated_at
 		FROM sessions WHERE id = ?`, id).Scan(
-		&session.ID, &title, &projectPath, &projectName, &model, &provider,
+		&session.ID, &title, &projectPath, &projectName, &model, &provider, &source,
 		&promptTokens, &completionTokens, &cost, &createdAt, &updatedAt,
 	)
 	if err == sql.ErrNoRows {
@@ -338,6 +357,9 @@ func (s *Store) GetSessionByID(id string) (*Session, []Message, error) {
 	}
 	if provider.Valid {
 		session.Provider = &provider.String
+	}
+	if source.Valid {
+		session.Source = &source.String
 	}
 	if promptTokens.Valid {
 		session.PromptTokens = &promptTokens.Int64
@@ -365,7 +387,7 @@ func (s *Store) GetSessionByID(id string) (*Session, []Message, error) {
 
 func (s *Store) GetMessages(sessionID string) ([]Message, error) {
 	rows, err := s.db.Query(`
-		SELECT id, session_id, role, text_content, model,
+		SELECT id, session_id, role, text_content, model, source,
 			prompt_tokens, completion_tokens, duration_ms, created_at, completed_at
 		FROM messages WHERE session_id = ? ORDER BY created_at ASC`, sessionID)
 	if err != nil {
@@ -377,6 +399,7 @@ func (s *Store) GetMessages(sessionID string) ([]Message, error) {
 	for rows.Next() {
 		var m Message
 		var model sql.NullString
+		var source sql.NullString
 		var promptTokens sql.NullInt64
 		var completionTokens sql.NullInt64
 		var durationMs sql.NullInt64
@@ -384,7 +407,7 @@ func (s *Store) GetMessages(sessionID string) ([]Message, error) {
 		var completedAt sql.NullInt64
 
 		err := rows.Scan(
-			&m.ID, &m.SessionID, &m.Role, &m.TextContent, &model,
+			&m.ID, &m.SessionID, &m.Role, &m.TextContent, &model, &source,
 			&promptTokens, &completionTokens, &durationMs, &createdAt, &completedAt,
 		)
 		if err != nil {
@@ -393,6 +416,9 @@ func (s *Store) GetMessages(sessionID string) ([]Message, error) {
 
 		if model.Valid {
 			m.Model = &model.String
+		}
+		if source.Valid {
+			m.Source = &source.String
 		}
 		if promptTokens.Valid {
 			m.PromptTokens = &promptTokens.Int64

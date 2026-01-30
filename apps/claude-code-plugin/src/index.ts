@@ -24,8 +24,13 @@ const sessionState = new Map<string, Partial<SessionPayload>>();
 
 const processedMessages = new Set<string>();
 
+const messageCounters = new Map<string, number>();
+
 function generateMessageId(sessionId: string, role: string): string {
-	return `${sessionId}-${role}-${Date.now()}`;
+	const key = `${sessionId}-${role}`;
+	const count = (messageCounters.get(key) ?? 0) + 1;
+	messageCounters.set(key, count);
+	return `${sessionId}-${role}-${count}`;
 }
 
 function getProjectName(cwd: string): string | undefined {
@@ -238,6 +243,7 @@ export function createPlugin(): ClaudeCodeHooks | null {
 					projectName: getProjectName(data.cwd),
 					model: data.model,
 					provider: "anthropic",
+					source: "claude-code",
 					title: "Untitled Session",
 					createdAt,
 				});
@@ -283,6 +289,7 @@ export function createPlugin(): ClaudeCodeHooks | null {
 							projectName: getProjectName(data.cwd),
 							model: currentState.model,
 							provider: "anthropic",
+							source: "claude-code",
 							title: inferredTitle,
 							createdAt: currentState.createdAt,
 						});
@@ -299,6 +306,7 @@ export function createPlugin(): ClaudeCodeHooks | null {
 				sessionId,
 				role: "user",
 				textContent: data.prompt,
+				source: "claude-code",
 				createdAt: Date.now(),
 			};
 
@@ -375,6 +383,7 @@ export function createPlugin(): ClaudeCodeHooks | null {
 				role: "assistant",
 				textContent: responseText,
 				model: resolvedModel,
+				source: "claude-code",
 				promptTokens: tokenUsage.input,
 				completionTokens: tokenUsage.output,
 				durationMs: resolvedDuration,
@@ -416,6 +425,7 @@ export function createPlugin(): ClaudeCodeHooks | null {
 				projectPath: data.cwd,
 				projectName: getProjectName(data.cwd),
 				provider: "anthropic",
+				source: "claude-code",
 				title: currentState.title,
 				model: currentState.model,
 				createdAt: currentState.createdAt,

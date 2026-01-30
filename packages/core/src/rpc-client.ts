@@ -60,6 +60,7 @@ export interface SessionPayload {
 	projectName?: string;
 	model?: string;
 	provider?: string;
+	source?: "opencode" | "claude-code";
 	promptTokens?: number;
 	completionTokens?: number;
 	cost?: number;
@@ -73,6 +74,7 @@ export interface MessagePayload {
 	role: string;
 	textContent: string;
 	model?: string;
+	source?: "opencode" | "claude-code";
 	promptTokens?: number;
 	completionTokens?: number;
 	durationMs?: number;

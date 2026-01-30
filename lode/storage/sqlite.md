@@ -18,6 +18,7 @@ CREATE TABLE sessions (
   project_name TEXT,
   model TEXT,
   provider TEXT,
+  source TEXT,  -- "opencode" | "claude-code"
   prompt_tokens INTEGER,
   completion_tokens INTEGER,
   cost REAL,
@@ -31,6 +32,7 @@ CREATE TABLE messages (
   role TEXT,
   text_content TEXT,
   model TEXT,
+  source TEXT,  -- "opencode" | "claude-code"
   prompt_tokens INTEGER,
   completion_tokens INTEGER,
   duration_ms INTEGER,
@@ -39,6 +41,11 @@ CREATE TABLE messages (
   FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
 );
 ```
+
+Upsert behavior
+- Stable fields (`title`, `model`, `provider`, `source`) are only updated if the new value is non-empty; existing values are preserved otherwise.
+- `created_at` is immutable after first write; subsequent upserts do not overwrite it.
+- For messages, `text_content` and `source` follow the same preservation logic.
 
 Links: [summary](../summary.md), [schemas](../data-model/schemas.md), [paths](paths.md), [daemon](../daemon/architecture.md)
 

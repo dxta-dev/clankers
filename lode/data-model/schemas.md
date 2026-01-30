@@ -9,6 +9,7 @@ Invariants
 - OpenCode session events may use `sessionID` or `id`; plugins must accept both and normalize to a single session id.
 - OpenCode uses `messageID` (not `id`) for message identifiers in message-related events.
 - OpenCode session data is delivered under `event.properties.info` for session events.
+- `source` field identifies the originating client: `"opencode"` or `"claude-code"`. Plugins must always include this field in upsert payloads.
 
 Links: [summary](../summary.md), [practices](../practices.md), [sqlite](../storage/sqlite.md)
 
@@ -19,6 +20,7 @@ const payload = MessagePayloadSchema.safeParse({
   sessionId: "sess-1",
   role: "assistant",
   textContent: "Here is the update",
+  source: "opencode",
 });
 
 if (payload.success) {
