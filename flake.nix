@@ -23,7 +23,7 @@
             pname = "clankers";
             version = "0.1.0";
             src = ./packages/cli;
-            vendorHash = "sha256-e8w2sXRMbrTCnwpCiNFCKAIxznIIxG/Frwdqn1KG1HQ=";
+            vendorHash = null;
 
             ldflags = [
               "-s"
@@ -267,7 +267,7 @@
               pname = "clankers-${name}";
               version = "0.1.0";
               src = ./packages/cli;
-              vendorHash = "sha256-e8w2sXRMbrTCnwpCiNFCKAIxznIIxG/Frwdqn1KG1HQ=";
+              vendorHash = null;
 
               ldflags = [
                 "-s"
@@ -319,7 +319,7 @@
             pname = "clankers";
             version = "0.1.0";
             src = ./packages/cli;
-            vendorHash = "sha256-e8w2sXRMbrTCnwpCiNFCKAIxznIIxG/Frwdqn1KG1HQ=";
+            vendorHash = null;
 
             ldflags = [
               "-s"
@@ -380,7 +380,7 @@
             pname = "clankers-go-tests";
             version = "0.1.0";
             src = ./packages/cli;
-            vendorHash = "sha256-e8w2sXRMbrTCnwpCiNFCKAIxznIIxG/Frwdqn1KG1HQ=";
+            vendorHash = null;
 
             ldflags = [
               "-s"
