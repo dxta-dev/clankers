@@ -128,13 +128,6 @@ export const ToolExecuteAfterSchema = z.object({
 	durationMs: z.number().optional(),
 });
 
-// OpenCode file operation schemas
-export const FileEditedSchema = z.object({
-	sessionId: z.string(),
-	path: z.string(),
-	operation: z.enum(["edited", "created", "deleted"]).optional(),
-}).passthrough();
-
 // OpenCode session error schema
 export const SessionErrorSchema = z.object({
 	sessionId: z.string(),
@@ -160,14 +153,6 @@ export const SessionStatusSchema = z.object({
 }).passthrough();
 
 // Payload schemas for RPC
-export const FileOperationPayloadSchema = z.object({
-	id: z.string(),
-	sessionId: z.string(),
-	filePath: z.string(),
-	operationType: z.string(),
-	createdAt: z.number(),
-});
-
 export const SessionErrorPayloadSchema = z.object({
 	id: z.string(),
 	sessionId: z.string(),

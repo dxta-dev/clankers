@@ -552,6 +552,32 @@ SessionStart: async (event) => {
 
 Claude Code `SessionEnd` does not include title/model/createdAt. If you upsert only the `SessionEnd` payload, those fields can be overwritten to NULL/defaults. Carry forward values from earlier hooks when building the final session payload.
 
+### 8. Process Isolation Breaks In-Memory State
+
+Each shell hook spawns a **separate Node process**. In-memory staging across hooks fails:
+
+```typescript
+// ❌ Wrong: staging lost between processes
+// PreToolUse → new process → stageToolStart(id, data) → process exits → data lost
+// PostToolUse → new process → completeToolExecution(id) → returns null (nothing staged)
+
+// ✅ Correct: make PostToolUse self-contained
+PostToolUse: async (event) => {
+  const tool: ToolPayload = {
+    id: generateToolId(event.session_id, event.tool_use_id),
+    sessionId: event.session_id,
+    toolName: event.tool_name,
+    toolInput: JSON.stringify(event.tool_input),
+    toolOutput: JSON.stringify(event.tool_response),
+    success: true,
+    createdAt: Date.now(),
+  };
+  await rpc.upsertTool(tool);
+}
+```
+
+This differs from OpenCode where the plugin runs as a long-lived process and can use in-memory aggregation.
+
 ## Advanced: Hook Output
 
 Hooks can return structured output to control Claude Code behavior:

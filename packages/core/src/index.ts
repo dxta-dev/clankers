@@ -8,10 +8,8 @@ export {
 	ToolPayloadSchema,
 	ToolExecuteBeforeSchema,
 	ToolExecuteAfterSchema,
-	FileEditedSchema,
 	SessionErrorSchema,
 	SessionCompactedSchema,
-	FileOperationPayloadSchema,
 	SessionErrorPayloadSchema,
 	CompactionEventPayloadSchema,
 } from "./schemas.js";
@@ -37,7 +35,6 @@ export {
 	type SessionPayload,
 	type MessagePayload,
 	type ToolPayload,
-	type FileOperationPayload,
 	type SessionErrorPayload,
 	type CompactionEventPayload,
 	type HealthResult,

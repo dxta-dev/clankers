@@ -6,6 +6,7 @@ Invariants
 - `session.created` is de-duplicated via an in-memory `syncedSessions` set.
 - `session.updated` and `session.idle` always upsert the latest session data.
 - Session event payloads arrive under `event.properties.info` and are normalized before validation.
+- If session events omit `model`, the plugin backfills it from message metadata (`modelID`) during message finalize.
 - `message.updated` and `message.part.updated` both feed the aggregation stage.
 - Plugins assume the daemon owns database creation and only write via RPC.
 - Events are skipped if the daemon is unreachable.

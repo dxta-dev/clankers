@@ -1,8 +1,6 @@
 import {
 	createLogger,
 	createRpcClient,
-	stageToolStart,
-	completeToolExecution,
 	extractFilePath,
 	truncateToolOutput,
 	type MessagePayload,
@@ -98,6 +96,8 @@ function buildTitleFromPrompt(prompt: string): string | undefined {
 interface TranscriptEntry {
 	type: string;
 	timestamp?: string;
+	userType?: string;
+	toolUseResult?: unknown;
 	message?: {
 		model?: string;
 		role?: string;
@@ -117,6 +117,16 @@ interface TranscriptMetadata {
 	promptTokens?: number;
 	completionTokens?: number;
 	durationMs?: number;
+	createdAt?: number;
+}
+
+interface SessionAggregates {
+	messageCount: number;
+	toolCallCount: number;
+	totalPromptTokens: number;
+	totalCompletionTokens: number;
+	model?: string;
+	title?: string;
 	createdAt?: number;
 }
 
@@ -186,6 +196,91 @@ async function extractMetadataFromTranscript(
 		}
 	} catch (error) {
 		logger.warn("Failed to read transcript", {
+			error: error instanceof Error ? error.message : String(error),
+		});
+	}
+
+	return result;
+}
+
+/**
+ * Extract session-level aggregates from transcript for SessionEnd.
+ * Computes message count, tool call count, and total token usage.
+ */
+async function extractSessionAggregates(
+	transcriptPath: string,
+): Promise<SessionAggregates> {
+	const fs = await import("node:fs");
+	const result: SessionAggregates = {
+		messageCount: 0,
+		toolCallCount: 0,
+		totalPromptTokens: 0,
+		totalCompletionTokens: 0,
+	};
+
+	try {
+		const content = fs.readFileSync(transcriptPath, "utf-8");
+		const lines = content.trim().split("\n");
+
+		let firstUserPrompt: string | undefined;
+		let firstTimestamp: number | undefined;
+
+		for (const line of lines) {
+			try {
+				const entry = JSON.parse(line) as TranscriptEntry;
+
+				// Count user messages (external, not tool results)
+				if (entry.type === "user" && entry.userType === "external") {
+					result.messageCount++;
+					// Capture first user prompt for title
+					if (!firstUserPrompt && entry.message?.content) {
+						const textContent = entry.message.content
+							.filter((c) => c.type === "text" && c.text)
+							.map((c) => c.text)
+							.join(" ");
+						if (textContent) {
+							firstUserPrompt = textContent.trim().slice(0, 120);
+						}
+					}
+					// Capture first timestamp
+					if (!firstTimestamp && entry.timestamp) {
+						firstTimestamp = new Date(entry.timestamp).getTime();
+					}
+				}
+
+				// Count assistant messages
+				if (entry.type === "assistant") {
+					result.messageCount++;
+
+					// Aggregate token usage
+					if (entry.message?.usage) {
+						const usage = entry.message.usage;
+						result.totalPromptTokens +=
+							(usage.input_tokens || 0) +
+							(usage.cache_creation_input_tokens || 0) +
+							(usage.cache_read_input_tokens || 0);
+						result.totalCompletionTokens += usage.output_tokens || 0;
+					}
+
+					// Capture model from first assistant message
+					if (!result.model && entry.message?.model) {
+						result.model = entry.message.model;
+					}
+				}
+
+				// Count tool uses
+				if (entry.toolUseResult !== undefined) {
+					result.toolCallCount++;
+				}
+			} catch {
+				// Skip malformed lines
+			}
+		}
+
+		result.title = firstUserPrompt;
+		result.createdAt = firstTimestamp;
+	} catch (error) {
+		logger.warn("Failed to extract session aggregates", {
 			error: error instanceof Error ? error.message : String(error),
 		});
 	}
@@ -430,14 +525,9 @@ export function createPlugin(): ClaudeCodeHooks | null {
 			const data = parsed.data;
 			const toolId = generateToolId(data.session_id, data.tool_use_id);
 
-			// Stage tool execution start
-			stageToolStart(toolId, {
-				sessionId: data.session_id,
-				toolName: data.tool_name,
-				toolInput: JSON.stringify(data.tool_input),
-				createdAt: Date.now(),
-			});
-
+			// Note: Staging is skipped for Claude Code because each hook runs in
+			// a separate process, making in-memory staging useless. PostToolUse
+			// will build the complete payload directly.
 			logger.debug(`Tool started: ${data.tool_name}`, {
 				toolId,
 				sessionId: data.session_id,
@@ -465,30 +555,30 @@ export function createPlugin(): ClaudeCodeHooks | null {
 			// Truncate output if needed
 			const toolOutput = truncateToolOutput(JSON.stringify(data.tool_response));
 
-			// Complete tool execution
-			const tool = completeToolExecution(toolId, {
+			// Build complete tool payload directly (no staging needed for Claude Code
+			// since each hook runs in a separate process)
+			const tool: ToolPayload = {
+				id: toolId,
+				sessionId: data.session_id,
+				toolName: data.tool_name,
+				toolInput: toolInputStr,
 				toolOutput,
+				filePath,
 				success: true,
-				durationMs: undefined, // Claude doesn't provide duration in PostToolUse
-			});
+				createdAt: Date.now(),
+			};
 
-			if (tool) {
-				// Add file path if extracted
-				if (filePath) {
-					tool.filePath = filePath;
-				}
-
-				try {
-					await rpc.upsertTool(tool);
-					logger.debug(`Tool completed: ${data.tool_name}`, {
-						toolId,
-						success: true,
-					});
-				} catch (error) {
-					logger.error("Failed to upsert tool", {
-						error: error instanceof Error ? error.message : String(error),
-					});
-				}
+			try {
+				await rpc.upsertTool(tool);
+				logger.debug(`Tool completed: ${data.tool_name}`, {
+					toolId,
+					sessionId: data.session_id,
+					success: true,
+				});
+			} catch (error) {
+				logger.error("Failed to upsert tool", {
+					error: error instanceof Error ? error.message : String(error),
+				});
 			}
 		},
 
@@ -509,32 +599,32 @@ export function createPlugin(): ClaudeCodeHooks | null {
 			const toolInputStr = JSON.stringify(data.tool_input);
 			const filePath = extractFilePath(data.tool_name, toolInputStr);
 
-			// Complete tool execution as failed
-			const tool = completeToolExecution(toolId, {
+			// Build complete tool payload directly (no staging needed for Claude Code
+			// since each hook runs in a separate process)
+			const tool: ToolPayload = {
+				id: toolId,
+				sessionId: data.session_id,
+				toolName: data.tool_name,
+				toolInput: toolInputStr,
+				filePath,
 				success: false,
 				errorMessage: data.error,
-				durationMs: undefined,
-			});
+				createdAt: Date.now(),
+			};
 
-			if (tool) {
-				// Add file path if extracted
-				if (filePath) {
-					tool.filePath = filePath;
-				}
-
-				try {
-					await rpc.upsertTool(tool);
-					logger.debug(`Tool failed: ${data.tool_name}`, {
-						toolId,
-						success: false,
-						error: data.error,
-						isInterrupt: data.is_interrupt,
-					});
-				} catch (error) {
-					logger.error("Failed to upsert tool failure", {
-						error: error instanceof Error ? error.message : String(error),
-					});
-				}
+			try {
+				await rpc.upsertTool(tool);
+				logger.debug(`Tool failed: ${data.tool_name}`, {
+					toolId,
+					sessionId: data.session_id,
+					success: false,
+					error: data.error,
+					isInterrupt: data.is_interrupt,
+				});
+			} catch (error) {
+				logger.error("Failed to upsert tool failure", {
+					error: error instanceof Error ? error.message : String(error),
+				});
 			}
 		},
 
@@ -551,7 +641,11 @@ export function createPlugin(): ClaudeCodeHooks | null {
 			const data = parsed.data;
 			const sessionId = data.session_id;
 
-			const currentState = sessionState.get(sessionId) || {};
+			// Extract aggregates from transcript (required because each hook runs
+			// in a separate process, so in-memory sessionState is always empty)
+			const aggregates = await extractSessionAggregates(data.transcript_path);
+
+			// Event data takes precedence, fall back to transcript-computed values
 			const totalTokenUsage = normalizeTokenUsage(
 				data.totalTokenUsage,
 				data.total_token_usage,
@@ -565,14 +659,14 @@ export function createPlugin(): ClaudeCodeHooks | null {
 				provider: "anthropic",
 				source: "claude-code",
 				status: "ended",
-				title: currentState.title,
-				model: currentState.model,
-				createdAt: currentState.createdAt,
-				promptTokens: totalTokenUsage.input ?? currentState.promptTokens,
-				completionTokens: totalTokenUsage.output ?? currentState.completionTokens,
+				title: aggregates.title,
+				model: aggregates.model,
+				createdAt: aggregates.createdAt,
+				promptTokens: totalTokenUsage.input ?? aggregates.totalPromptTokens,
+				completionTokens: totalTokenUsage.output ?? aggregates.totalCompletionTokens,
 				cost: resolvedCost,
-				messageCount: data.messageCount,
-				toolCallCount: data.toolCallCount,
+				messageCount: data.messageCount ?? aggregates.messageCount,
+				toolCallCount: data.toolCallCount ?? aggregates.toolCallCount,
 				endedAt: Date.now(),
 				updatedAt: Date.now(),
 			};

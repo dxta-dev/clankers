@@ -86,14 +86,14 @@ GROUP BY tool_name
 ORDER BY error_rate DESC"
 ```
 
-### Most frequently edited files
+### Most frequently accessed files (via tools)
 
 ```bash
-clankers query "SELECT file_path, COUNT(*) as edits
-FROM file_operations
-WHERE operation_type = 'edited'
+clankers query "SELECT file_path, COUNT(*) as uses
+FROM tools
+WHERE file_path IS NOT NULL
 GROUP BY file_path
-ORDER BY edits DESC
+ORDER BY uses DESC
 LIMIT 20"
 ```
 

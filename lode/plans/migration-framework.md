@@ -58,12 +58,6 @@ var migrations = []Migration{
     );`,
     Down: "DROP TABLE IF EXISTS tools;",
   },
-  {
-    Version:     2,
-    Description: "Add file_operations table",
-    Up: `CREATE TABLE IF NOT EXISTS file_operations (...);`,
-    Down: "DROP TABLE IF EXISTS file_operations;",
-  },
   // ...
 }
 ```

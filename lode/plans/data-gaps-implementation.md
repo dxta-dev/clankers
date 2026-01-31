@@ -1,12 +1,12 @@
 # Data Gaps Implementation Plan
 
-Complete roadmap for capturing tool usage, file operations, errors, and enhanced metadata across both Claude Code and OpenCode plugins.
+Complete roadmap for capturing tool usage, errors, and enhanced metadata across both Claude Code and OpenCode plugins.
 
 **Last Updated:** 2026-01-31 (Sprint 5A Complete - OpenCode Enhanced Metadata)
 
 **Current Status:** 
 - Phase 1 (Tool Tracking) ✅ COMPLETE. Both OpenCode and Claude Code tool tracking implemented.
-- Phase 2 (OpenCode-Specific Events) ✅ COMPLETE. File operations, session errors, and compaction events implemented.
+- Phase 2 (OpenCode-Specific Events) ✅ COMPLETE. Session errors and compaction events implemented.
 - Phase 3 (Enhanced Metadata) ✅ COMPLETE. Sprint 5A (OpenCode) ✅ COMPLETE. Sprint 5B (Claude Code) ✅ COMPLETE.
 
 **Decisions Made:**
@@ -21,7 +21,7 @@ This plan addresses the major data gaps identified in the current plugin impleme
 | Gap | Claude Code | OpenCode | Value |
 |-----|-------------|----------|-------|
 | Tool usage tracking | ✅ **IMPLEMENTED** `PreToolUse`/`PostToolUse`/`PostToolUseFailure` | ✅ **IMPLEMENTED** `tool.execute.*` | **Critical** - Understand what AI actually does |
-| File operations | ⏳ Pending (via PostToolUse) | ✅ **IMPLEMENTED** `file.edited` | **High** - Track code churn |
+| File paths | ✅ **IMPLEMENTED** via tool payload `file_path` | ✅ **IMPLEMENTED** via tool payload `file_path` | **High** - Track code churn |
 | Error tracking | ✅ **IMPLEMENTED** `PostToolUseFailure` | ✅ **IMPLEMENTED** `session.error` | **Medium** - Debugging/quality metrics |
 | Compaction events | ❌ Not available | ✅ **IMPLEMENTED** `session.compacted` | **Medium** - Context window analytics |
 | Enhanced metadata | ✅ **IMPLEMENTED** SessionEnd totals, permission_mode | ✅ **IMPLEMENTED** `session.status` tracking | **Medium** - Complete session picture |
@@ -209,7 +209,7 @@ if (event.type === "tool.execute.after") {
 
 ### Success Metrics
 - All Bash commands captured with exit status
-- All file operations (Read/Write/Edit) captured with paths
+- All tool-based file paths (Read/Write/Edit) captured
 - Tool execution duration tracked
 - Error rate by tool type visible
 
@@ -217,44 +217,7 @@ if (event.type === "tool.execute.after") {
 
 ## Phase 2: OpenCode-Specific Events (Priority: High)
 
-### 2.1 File Operations Tracking
-
-OpenCode provides `file.edited` events that Claude Code hooks cannot access.
-
-Schema addition:
-```sql
-CREATE TABLE file_operations (
-  id TEXT PRIMARY KEY,
-  session_id TEXT NOT NULL,
-  file_path TEXT NOT NULL,
-  operation_type TEXT NOT NULL,  -- edited, created, deleted
-  created_at INTEGER NOT NULL,
-  FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
-);
-
-CREATE INDEX idx_file_ops_session ON file_operations(session_id);
-CREATE INDEX idx_file_ops_path ON file_operations(file_path);
-```
-
-Implementation:
-```typescript
-if (event.type === "file.edited") {
-  const parsed = FileEditedSchema.safeParse(props);
-  if (!parsed.success) return;
-  
-  await rpc.upsertFileOperation({
-    id: generateId(),
-    sessionId: parsed.data.sessionId,
-    filePath: parsed.data.path,
-    operationType: "edited",
-    createdAt: Date.now(),
-  });
-}
-```
-
-Value: Track "hot files" - which files are being edited most frequently across sessions.
-
-### 2.2 Error Tracking
+### 2.1 Error Tracking
 
 Capture `session.error` events for debugging and quality metrics.
 
@@ -288,7 +251,7 @@ if (event.type === "session.error") {
 
 Value: Identify problematic sessions, API error rates, common failure modes.
 
-### 2.3 Compaction Events
+### 2.2 Compaction Events
 
 OpenCode's `session.compacted` provides context window management insights.
 
@@ -451,9 +414,8 @@ See [migration-framework.md](./migration-framework.md) for the separate detailed
 4. ⏳ Test with actual OpenCode tool usage (requires manual testing)
 
 ### Sprint 4: OpenCode-Specific Features ✅ COMPLETE
-1. ✅ Implement `file.edited` tracking
-2. ✅ Implement `session.error` tracking
-3. ✅ Implement `session.compacted` tracking
+1. ✅ Implement `session.error` tracking
+2. ✅ Implement `session.compacted` tracking
 
 ### Sprint 5: Enhanced Metadata
 
@@ -487,12 +449,12 @@ See [migration-framework.md](./migration-framework.md) for the separate detailed
 Once implemented, these queries become possible:
 
 ```sql
--- Most frequently edited files
-SELECT file_path, COUNT(*) as edits 
-FROM file_operations 
-WHERE operation_type = 'edited' 
-GROUP BY file_path 
-ORDER BY edits DESC 
+-- Most frequently accessed files (via tools)
+SELECT file_path, COUNT(*) as uses
+FROM tools
+WHERE file_path IS NOT NULL
+GROUP BY file_path
+ORDER BY uses DESC
 LIMIT 20;
 
 -- Tool error rate by type
@@ -546,7 +508,6 @@ ORDER BY compaction_count DESC;
 - [x] Tool error rate measurable by tool type
 
 ### Phase 2 (OpenCode-Specific) - ✅ COMPLETE
-- [x] File edit heatmap available (most edited files) - `file.edited` events implemented
 - [x] Session error rate trackable over time - `session.error` events implemented
 - [x] Compaction events show context window pressure - `session.compacted` events implemented
 - [x] Zero performance degradation in plugins
@@ -575,9 +536,8 @@ flowchart TB
     end
 
     subgraph Phase2[Phase 2: OpenCode Specific ✅ COMPLETE]
-        P2_1[✅ file.edited tracking]
-        P2_2[✅ session.error tracking]
-        P2_3[✅ session.compacted tracking]
+        P2_1[✅ session.error tracking]
+        P2_2[✅ session.compacted tracking]
     end
 
     subgraph Phase3[Phase 3: Enhanced Metadata 🔄 IN PROGRESS]
@@ -599,5 +559,4 @@ flowchart TB
     style P1_3 fill:#90EE90
     style P2_1 fill:#90EE90
     style P2_2 fill:#90EE90
-    style P2_3 fill:#90EE90
 ```

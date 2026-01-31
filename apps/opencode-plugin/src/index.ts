@@ -6,7 +6,6 @@ import {
 	SessionStatusSchema,
 	ToolExecuteBeforeSchema,
 	ToolExecuteAfterSchema,
-	FileEditedSchema,
 	SessionErrorSchema,
 	SessionCompactedSchema,
 	createLogger,
@@ -124,6 +123,7 @@ async function handleEvent(
 			({ messageId, sessionId, role, textContent, info }) => {
 				const finalRole =
 					role === "unknown" || !role ? inferRole(textContent) : role;
+				const modelId = info.modelID;
 				const durationMs =
 					info.time?.completed && info.time?.created
 						? info.time.completed - info.time.created
@@ -141,6 +141,9 @@ async function handleEvent(
 					createdAt: info.time?.created,
 					completedAt: info.time?.completed,
 				});
+				if (modelId) {
+					void rpc.upsertSession({ id: sessionId, model: modelId });
+				}
 			},
 		);
 	}
@@ -155,6 +158,7 @@ async function handleEvent(
 			({ messageId, sessionId, role, textContent, info }) => {
 				const finalRole =
 					role === "unknown" || !role ? inferRole(textContent) : role;
+				const modelId = info.modelID;
 				const durationMs =
 					info.time?.completed && info.time?.created
 						? info.time.completed - info.time.created
@@ -172,6 +176,9 @@ async function handleEvent(
 					createdAt: info.time?.created,
 					completedAt: info.time?.completed,
 				});
+				if (modelId) {
+					void rpc.upsertSession({ id: sessionId, model: modelId });
+				}
 			},
 		);
 	}
@@ -247,34 +254,6 @@ async function handleEvent(
 				durationMs: data.durationMs,
 			});
 		}
-	}
-
-	// File operations tracking (file.edited, file.created, file.deleted)
-	if (event.type === "file.edited") {
-		const parsed = FileEditedSchema.safeParse(props);
-		if (!parsed.success) {
-			logger.debug("File edited validation failed", {
-				error: parsed.error.message,
-			});
-			return;
-		}
-
-		const data = parsed.data;
-		const operationType = data.operation || "edited";
-
-		await rpc.upsertFileOperation({
-			id: generateId(),
-			sessionId: data.sessionId,
-			filePath: data.path,
-			operationType,
-			createdAt: Date.now(),
-		});
-
-		logger.debug(`File ${operationType}: ${data.path}`, {
-			sessionId: data.sessionId,
-			path: data.path,
-			operation: operationType,
-		});
 	}
 
 	// Session error tracking

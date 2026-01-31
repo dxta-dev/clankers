@@ -4,7 +4,8 @@ The clankers daemon owns the SQLite database. It creates the schema on startup, 
 
 Invariants
 - DB path resolves from the harness-neutral data root (see `storage/paths.md`) and can be overridden via `CLANKERS_DB_PATH`.
-- WAL mode and foreign key enforcement are enabled on every open.
+- WAL mode, foreign key enforcement, and a non-zero busy timeout are enabled on every open.
+- The daemon uses a single SQLite connection per process to avoid lock contention.
 - `messages.session_id` references `sessions.id` with cascade delete.
 - The daemon handles creation and migrations on startup.
 - Plugins call the daemon over JSON-RPC.
@@ -65,18 +66,6 @@ CREATE INDEX idx_tools_session ON tools(session_id);
 CREATE INDEX idx_tools_name ON tools(tool_name);
 CREATE INDEX idx_tools_file ON tools(file_path);
 
-CREATE TABLE file_operations (
-  id TEXT PRIMARY KEY,
-  session_id TEXT NOT NULL,
-  file_path TEXT NOT NULL,
-  operation_type TEXT NOT NULL,
-  created_at INTEGER NOT NULL,
-  FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
-);
-
-CREATE INDEX idx_file_ops_session ON file_operations(session_id);
-CREATE INDEX idx_file_ops_path ON file_operations(file_path);
-
 CREATE TABLE session_errors (
   id TEXT PRIMARY KEY,
   session_id TEXT NOT NULL,
@@ -109,7 +98,7 @@ Upsert behavior
 
 Performance notes (documented)
 - Indexes exist for tool/file/session error/compaction analytics queries.
-- WAL mode and FK enforcement are enabled on every open; no additional tuning is enabled today.
+- WAL mode, FK enforcement, and a 5s busy timeout are enabled on every open; no additional tuning is enabled today.
 
 Links: [summary](../summary.md), [schemas](../data-model/schemas.md), [paths](paths.md), [daemon](../daemon/architecture.md)
 
@@ -117,6 +106,8 @@ Example
 ```go
 // Uses modernc.org/sqlite (pure Go, no CGO required)
 db, err := sql.Open("sqlite", dbPath+"?_journal_mode=WAL&_foreign_keys=ON")
+db.SetMaxOpenConns(1)
+_, _ = db.Exec("PRAGMA busy_timeout = 5000;")
 ```
 
 Diagram

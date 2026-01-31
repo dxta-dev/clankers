@@ -101,14 +101,6 @@ export interface ToolPayload {
 	createdAt: number;
 }
 
-export interface FileOperationPayload {
-	id: string;
-	sessionId: string;
-	filePath: string;
-	operationType: string;
-	createdAt: number;
-}
-
 export interface SessionErrorPayload {
 	id: string;
 	sessionId: string;
@@ -290,13 +282,6 @@ export function createRpcClient(options: RpcClientOptions) {
 			return rpcCall<OkResult>("upsertTool", {
 				...envelope,
 				tool,
-			});
-		},
-
-		async upsertFileOperation(fileOperation: FileOperationPayload): Promise<OkResult> {
-			return rpcCall<OkResult>("upsertFileOperation", {
-				...envelope,
-				fileOperation,
 			});
 		},
 

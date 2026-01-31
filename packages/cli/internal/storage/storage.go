@@ -65,18 +65,6 @@ CREATE INDEX IF NOT EXISTS idx_tools_session ON tools(session_id);
 CREATE INDEX IF NOT EXISTS idx_tools_name ON tools(tool_name);
 CREATE INDEX IF NOT EXISTS idx_tools_file ON tools(file_path);
 
-CREATE TABLE IF NOT EXISTS file_operations (
-	id TEXT PRIMARY KEY,
-	session_id TEXT NOT NULL,
-	file_path TEXT NOT NULL,
-	operation_type TEXT NOT NULL,
-	created_at INTEGER NOT NULL,
-	FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
-);
-
-CREATE INDEX IF NOT EXISTS idx_file_ops_session ON file_operations(session_id);
-CREATE INDEX IF NOT EXISTS idx_file_ops_path ON file_operations(file_path);
-
 CREATE TABLE IF NOT EXISTS session_errors (
 	id TEXT PRIMARY KEY,
 	session_id TEXT NOT NULL,
@@ -167,15 +155,6 @@ ON CONFLICT(id) DO UPDATE SET
 	message_id = COALESCE(excluded.message_id, tools.message_id);
 `
 
-const upsertFileOperationSQL = `
-INSERT INTO file_operations (
-	id, session_id, file_path, operation_type, created_at
-) VALUES (?, ?, ?, ?, ?)
-ON CONFLICT(id) DO UPDATE SET
-	file_path = excluded.file_path,
-	operation_type = excluded.operation_type;
-`
-
 const upsertSessionErrorSQL = `
 INSERT INTO session_errors (
 	id, session_id, error_type, error_message, created_at
@@ -201,7 +180,6 @@ type Store struct {
 	upsertSession      *sql.Stmt
 	upsertMessage      *sql.Stmt
 	upsertTool         *sql.Stmt
-	upsertFileOp       *sql.Stmt
 	upsertSessionError *sql.Stmt
 	upsertCompaction   *sql.Stmt
 }
@@ -254,14 +232,6 @@ type Tool struct {
 	CreatedAt    int64   `json:"createdAt"`
 }
 
-type FileOperation struct {
-	ID            string `json:"id"`
-	SessionID     string `json:"sessionId"`
-	FilePath      string `json:"filePath"`
-	OperationType string `json:"operationType"`
-	CreatedAt     int64  `json:"createdAt"`
-}
-
 type SessionError struct {
 	ID           string  `json:"id"`
 	SessionID    string  `json:"sessionId"`
@@ -282,6 +252,22 @@ type CompactionEvent struct {
 
 type QueryResult map[string]interface{}
 
+var sqlitePragmas = []string{
+	"PRAGMA journal_mode = WAL;",
+	"PRAGMA foreign_keys = ON;",
+	"PRAGMA busy_timeout = 5000;",
+}
+
+func configureDb(db *sql.DB) error {
+	db.SetMaxOpenConns(1)
+	for _, pragma := range sqlitePragmas {
+		if _, err := db.Exec(pragma); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func EnsureDb(dbPath string) (bool, error) {
 	dir := filepath.Dir(dbPath)
 	if err := os.MkdirAll(dir, 0755); err != nil {
@@ -297,6 +283,10 @@ func EnsureDb(dbPath string) (bool, error) {
 	}
 	defer db.Close()
 
+	if err := configureDb(db); err != nil {
+		return false, err
+	}
+
 	if _, err := db.Exec(schemaSQL); err != nil {
 		return false, err
 	}
@@ -307,6 +297,11 @@ func EnsureDb(dbPath string) (bool, error) {
 func Open(dbPath string) (*Store, error) {
 	db, err := sql.Open("sqlite", dbPath+"?_journal_mode=WAL&_foreign_keys=ON")
 	if err != nil {
+		return nil, err
+	}
+
+	if err := configureDb(db); err != nil {
+		db.Close()
 		return nil, err
 	}
 
@@ -331,21 +326,11 @@ func Open(dbPath string) (*Store, error) {
 		return nil, err
 	}
 
-	upsertFileOp, err := db.Prepare(upsertFileOperationSQL)
-	if err != nil {
-		upsertSession.Close()
-		upsertMessage.Close()
-		upsertTool.Close()
-		db.Close()
-		return nil, err
-	}
-
 	upsertSessionError, err := db.Prepare(upsertSessionErrorSQL)
 	if err != nil {
 		upsertSession.Close()
 		upsertMessage.Close()
 		upsertTool.Close()
-		upsertFileOp.Close()
 		db.Close()
 		return nil, err
 	}
@@ -355,7 +340,6 @@ func Open(dbPath string) (*Store, error) {
 		upsertSession.Close()
 		upsertMessage.Close()
 		upsertTool.Close()
-		upsertFileOp.Close()
 		upsertSessionError.Close()
 		db.Close()
 		return nil, err
@@ -366,7 +350,6 @@ func Open(dbPath string) (*Store, error) {
 		upsertSession:      upsertSession,
 		upsertMessage:      upsertMessage,
 		upsertTool:         upsertTool,
-		upsertFileOp:       upsertFileOp,
 		upsertSessionError: upsertSessionError,
 		upsertCompaction:   upsertCompaction,
 	}, nil
@@ -376,7 +359,6 @@ func (s *Store) Close() error {
 	s.upsertSession.Close()
 	s.upsertMessage.Close()
 	s.upsertTool.Close()
-	s.upsertFileOp.Close()
 	s.upsertSessionError.Close()
 	s.upsertCompaction.Close()
 	return s.db.Close()
@@ -469,17 +451,6 @@ func (s *Store) UpsertTool(tool *Tool) error {
 		tool.ErrorMessage,
 		tool.DurationMs,
 		tool.CreatedAt,
-	)
-	return err
-}
-
-func (s *Store) UpsertFileOperation(op *FileOperation) error {
-	_, err := s.upsertFileOp.Exec(
-		op.ID,
-		op.SessionID,
-		op.FilePath,
-		op.OperationType,
-		op.CreatedAt,
 	)
 	return err
 }

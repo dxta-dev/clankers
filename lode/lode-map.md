@@ -41,6 +41,7 @@
   - [plans/fix-data-gaps](plans/fix-data-gaps.md)
   - [plans/implementation-plan](plans/implementation-plan.md)
   - [plans/data-gaps-implementation](plans/data-gaps-implementation.md) - Active implementation roadmap
+  - [plans/clankers-dev-audit](plans/clankers-dev-audit.md)
   - [plans/migration-framework](plans/migration-framework.md) - Future migration system
   - [plans/token-auth-phase-2](plans/token-auth-phase-2.md)
   - [plans/workos-auth-phase-3](plans/workos-auth-phase-3.md)
