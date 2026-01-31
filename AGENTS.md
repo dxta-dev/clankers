@@ -1,49 +1,119 @@
 # Agent Guide for @dxta-dev/clankers
 
+**Nix is required for all development work.** This project uses a Nix flake for reproducible builds and tooling.
+
 Clankers is a pnpm monorepo with TypeScript ESM packages (OpenCode, Cursor,
 Claude Code) and a Go daemon. Plugins validate events with Zod, aggregate
 message parts in memory, and send JSON-RPC calls to the daemon, which owns all
 SQLite schema creation, migrations, and upserts. Use this file as the
 operational guide for agentic coding work.
 
+## Prerequisites
+
+- [Nix](https://nixos.org/download/) with flakes enabled
+
+## Enter Dev Shell
+
+```bash
+# Standard dev shell (manual daemon control)
+nix develop
+
+# Dev shell with auto-started daemon and all plugins (recommended)
+nix develop .#with-all-plugins
+```
+
 ## Build, Lint, Test
-- Install deps: `pnpm install`
-- Typecheck: `pnpm check` (tsc --noEmit)
-- Lint: `pnpm lint` (Biome)
-- Format: `pnpm format` (Biome, write mode)
-- Build all app packages: `pnpm build`
-- Build a single app: `pnpm build:opencode`, `pnpm build:cursor`, `pnpm build:claude`
-- Release workflow publishes TypeScript sources without a build step.
+
+### Building Packages (via Nix)
+
+Build packages directly with nix (no dev shell needed):
+
+```bash
+# Daemon (current system)
+nix build .#clankers
+
+# Cross-compiled daemons
+nix build .#clankers-linux-amd64
+nix build .#clankers-linux-arm64
+nix build .#clankers-darwin-amd64
+nix build .#clankers-darwin-arm64
+nix build .#clankers-windows-amd64
+
+# Plugins
+nix build .#clankers-opencode
+nix build .#clankers-claude-code
+nix build .#clankers-cursor
+```
+
+Results are in `./result/`.
+
+### Dev Shell Commands
+
+**Without entering shell (one-off commands):**
+```bash
+nix develop -c pnpm install
+nix develop -c pnpm check
+nix develop -c pnpm lint
+nix develop -c pnpm format
+nix develop -c pnpm build
+nix develop -c pnpm build:opencode
+nix develop -c pnpm build:claude
+nix develop -c pnpm build:cursor
+```
+
+**Inside `nix develop` or `nix develop .#with-all-plugins`:**
+
+| Task | Command |
+|------|---------|
+| Install deps | `pnpm install` |
+| Typecheck | `pnpm check` (tsc --noEmit) |
+| Lint | `pnpm lint` (Biome) |
+| Format | `pnpm format` (Biome, write mode) |
+| Build all apps | `pnpm build` |
+| Build single app | `pnpm build:opencode`, `pnpm build:cursor`, `pnpm build:claude` |
 
 ### Running Tests
 
-**All tests:**
+**All tests (via Nix - preferred):**
 ```bash
-pnpm test              # Run Go + TypeScript tests
+nix flake check              # Runs lint, typecheck, go-tests, integration
+```
+
+**All tests (inside dev shell):**
+```bash
+nix develop
+pnpm test                   # Run Go + TypeScript tests
 ```
 
 **Go tests only:**
 ```bash
-pnpm test:go           # Run all Go unit tests
+nix develop
+pnpm test:go                # Run all Go unit tests
 # Or:
-cd packages/cli && go test ./...           # All tests
-cd packages/cli && go test ./internal/logging/... -v   # Specific package with verbose output
-cd packages/cli && go test ./internal/logging/... -run TestNew   # Single test
+cd packages/cli && go test ./...
+cd packages/cli && go test ./internal/logging/... -v
+cd packages/cli && go test ./internal/logging/... -run TestNew
 ```
 
 **TypeScript tests only:**
 ```bash
-pnpm test:ts           # Run core library tests
+nix develop
+pnpm test:ts                # Run core library tests
 # Or:
-cd packages/core && pnpm test              # Run all tests
-cd packages/core && pnpm test:watch        # Watch mode
-cd packages/core && pnpm exec vitest run -t "logger creation"   # Run tests matching pattern
+cd packages/core && pnpm test
+cd packages/core && pnpm test:watch
+cd packages/core && pnpm exec vitest run -t "logger creation"
 ```
 
 **Integration tests:**
 ```bash
-bash tests/run-integration.sh              # Full integration test (starts daemon)
-# Or manually (requires running daemon):
+# Via Nix (preferred)
+nix flake check .#integration
+
+# Or manually inside dev shell:
+nix develop
+bash tests/run-integration.sh
+# Or with running daemon:
 CLANKERS_SOCKET_PATH=/tmp/test.sock pnpm exec tsx tests/integration.ts
 ```
 

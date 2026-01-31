@@ -126,36 +126,83 @@ Overrides
 
 ## Development
 
-This repo is a pnpm monorepo with:
+**Nix is required for development.** This project uses a Nix flake for reproducible builds and consistent tooling across all platforms.
 
-- `apps/opencode-plugin` (published as `@dxta-dev/clankers-opencode`)
-- `apps/cursor-plugin` (published as `@dxta-dev/clankers-cursor`)
-- `apps/claude-code-plugin` (published as `@dxta-dev/clankers-claude-code`)
-- `packages/core`
+### Prerequisites
 
-### With Nix (Recommended)
+- [Nix](https://nixos.org/download/) with flakes enabled
 
-The flake provides a complete dev environment with Node, pnpm, Go, and the daemon:
+### Quick Start
 
 ```bash
-# Standard dev shell - manual daemon control
-nix develop
-
-# Dev shell with auto-started daemon and all plugins
+# Enter the dev shell (auto-starts daemon + builds all plugins)
 nix develop .#with-all-plugins
 
-# Run checks
-nix flake check
+# Or manual control
+nix develop
+clankers daemon &
 ```
 
-### Without Nix
+### Available Commands
 
-```sh
-pnpm install
-pnpm build:opencode
+| Task | Command |
+|------|---------|
+| Typecheck | `nix develop -c pnpm check` |
+| Lint | `nix develop -c pnpm lint` |
+| Format | `nix develop -c pnpm format` |
+| Build plugins | `nix develop -c pnpm build` |
+| Run all tests | `nix flake check` |
+
+Or enter the shell first:
+```bash
+nix develop
+pnpm check
 pnpm lint
-pnpm format
+pnpm build:opencode
 ```
 
-`pnpm build:opencode` bundles with esbuild (Node 24) and writes the plugin to
-`apps/opencode-plugin/dist/` for local OpenCode usage.
+### Building Packages (via Nix)
+
+Build individual packages without entering dev shell:
+
+```bash
+# Build daemon for current system
+nix build .#clankers
+
+# Build plugins
+nix build .#clankers-opencode
+nix build .#clankers-claude-code
+nix build .#clankers-cursor
+```
+
+Results are in `./result/`:
+- Daemon: `./result/bin/clankers`
+- Plugins: `./result/dist/`, `./result/src/`, `./result/package.json`
+
+### Building Inside Dev Shell
+
+For iterative development, use pnpm inside the nix shell:
+
+```bash
+nix develop
+pnpm install
+pnpm build              # Build all apps
+pnpm build:opencode     # Build specific app
+pnpm build:claude
+pnpm build:cursor
+```
+
+### Dev Shell Variants
+
+| Shell | Use Case |
+|-------|----------|
+| `nix develop` | Manual daemon control, minimal setup |
+| `nix develop .#with-all-plugins` | **Recommended** - Auto-starts daemon, builds OpenCode + Claude Code plugins, creates config files |
+
+### Project Structure
+
+- `apps/opencode-plugin` → `@dxta-dev/clankers-opencode`
+- `apps/cursor-plugin` → `@dxta-dev/clankers-cursor`
+- `apps/claude-code-plugin` → `@dxta-dev/clankers-claude-code`
+- `packages/core` - Shared TypeScript library
+- `packages/cli` - Go daemon

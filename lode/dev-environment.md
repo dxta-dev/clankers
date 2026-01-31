@@ -1,6 +1,10 @@
 # Dev Environment
 
-Nix flake provides a reproducible dev shell with all required tooling.
+**Nix is required for all development.** The flake provides a reproducible dev shell with all required tooling.
+
+## Prerequisites
+
+- [Nix](https://nixos.org/download/) with flakes enabled
 
 ## Entry
 

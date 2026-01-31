@@ -1,4 +1,5 @@
 Practices
+- **Nix is required for all development** - use `nix develop` or `nix develop .#with-all-plugins`.
 - Validate event payloads with Zod at ingress and storage boundaries.
 - Use SQLite upserts for idempotent session and message writes.
 - Enable WAL and foreign keys on database open.
