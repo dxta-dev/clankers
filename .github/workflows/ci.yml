@@ -29,7 +29,7 @@ jobs:
         uses: cachix/install-nix-action@v27
 
       - name: Build daemon
-        run: nix build .#clankers-daemon
+        run: nix build .#clankers
 
       - name: Build TypeScript apps
         run: |

@@ -21,15 +21,15 @@ jobs:
       matrix:
         target:
           - name: linux-amd64
-            artifact: clankers-daemon
+            artifact: clankers
           - name: linux-arm64
-            artifact: clankers-daemon
+            artifact: clankers
           - name: darwin-amd64
-            artifact: clankers-daemon
+            artifact: clankers
           - name: darwin-arm64
-            artifact: clankers-daemon
+            artifact: clankers
           - name: windows-amd64
-            artifact: clankers-daemon.exe
+            artifact: clankers.exe
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -38,7 +38,7 @@ jobs:
         uses: cachix/install-nix-action@v27
 
       - name: Build daemon for ${{ matrix.target.name }}
-        run: nix build .#clankers-daemon-${{ matrix.target.name }}
+        run: nix build .#clankers-${{ matrix.target.name }}
 
       - name: Prepare artifact
         run: |
@@ -78,7 +78,7 @@ jobs:
             target=$(basename "$dir" | sed 's/daemon-//')
             
             # Find the binary (handles both with and without .exe)
-            binary=$(find "$dir" -type f -name "clankers-daemon*" | head -1)
+            binary=$(find "$dir" -type f -name "clankers*" | head -1)
             filename=$(basename "$binary")
             
             # Copy with target prefix for clarity
@@ -109,10 +109,10 @@ jobs:
             
             | Platform | Architecture | File |
             |----------|--------------|------|
-            | Linux | x86_64 | `linux-amd64-clankers-daemon` |
-            | Linux | ARM64 | `linux-arm64-clankers-daemon` |
-            | macOS | x86_64 | `darwin-amd64-clankers-daemon` |
-            | macOS | ARM64 (Apple Silicon) | `darwin-arm64-clankers-daemon` |
-            | Windows | x86_64 | `windows-amd64-clankers-daemon.exe` |
+            | Linux | x86_64 | `linux-amd64-clankers` |
+            | Linux | ARM64 | `linux-arm64-clankers` |
+            | macOS | x86_64 | `darwin-amd64-clankers` |
+            | macOS | ARM64 (Apple Silicon) | `darwin-arm64-clankers` |
+            | Windows | x86_64 | `windows-amd64-clankers.exe` |
             
             Verify downloads with `checksums.txt` (SHA256).
