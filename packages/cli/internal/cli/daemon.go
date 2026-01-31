@@ -53,7 +53,7 @@ func (f *filteredJsonrpc2Logger) Printf(format string, v ...interface{}) {
 	}
 	// Pass through other messages to unified structured logger
 	if f.logger != nil {
-		f.logger.Debugf("jsonrpc2", msg)
+		f.logger.Debugf("jsonrpc2", "%s", msg)
 	}
 }
 
