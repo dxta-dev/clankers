@@ -52,6 +52,7 @@
   - [plans/database-triggers-sync](plans/database-triggers-sync.md)
   - [plans/sync-optimization](plans/sync-optimization.md)
   - [plans/tool-logging-debug](plans/tool-logging-debug.md)
+  - [plans/connection-notifications](plans/connection-notifications.md) - Plugin daemon connection user notifications
 - claude/
   - [claude/plugin-system](claude/plugin-system.md)
   - [claude/data-mapping](claude/data-mapping.md)

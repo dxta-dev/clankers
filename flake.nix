@@ -213,7 +213,7 @@
             pname = "clankers-workspace";
             version = "0.1.0";
             src = ./.;
-            hash = "sha256-DLqQOmfunGEXRL60I+nlMTe2H7mLnA+nnzuRFKfbtRY=";
+            hash = "sha256-dha8iMzozE2G43Vsw1SdFPMfUbHJNiTH/CxQr/IWUyw=";
             fetcherVersion = 3;
           };
 
@@ -369,7 +369,7 @@
             pname = "clankers-workspace";
             version = "0.1.0";
             src = ./.;
-            hash = "sha256-DLqQOmfunGEXRL60I+nlMTe2H7mLnA+nnzuRFKfbtRY=";
+            hash = "sha256-dha8iMzozE2G43Vsw1SdFPMfUbHJNiTH/CxQr/IWUyw=";
             fetcherVersion = 3;
           };
 
