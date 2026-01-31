@@ -2,16 +2,20 @@
 
 Complete roadmap for capturing tool usage, file operations, errors, and enhanced metadata across both Claude Code and OpenCode plugins.
 
+**Last Updated:** 2026-01-31
+
+**Current Status:** Phase 1 (Tool Tracking) partially complete. OpenCode tool tracking implemented; Claude Code tool tracking pending.
+
 ## Overview
 
 This plan addresses the major data gaps identified in the current plugin implementations:
 
 | Gap | Claude Code | OpenCode | Value |
 |-----|-------------|----------|-------|
-| Tool usage tracking | ❌ Missing `PreToolUse`/`PostToolUse` | ❌ Missing `tool.execute.*` | **Critical** - Understand what AI actually does |
-| File operations | ❌ N/A (via hooks) | ❌ Missing `file.edited` | **High** - Track code churn |
-| Error tracking | ❌ Missing `PostToolUseFailure` | ❌ Missing `session.error` | **Medium** - Debugging/quality metrics |
-| Compaction events | ❌ Not available | ❌ Missing `session.compacted` | **Medium** - Context window analytics |
+| Tool usage tracking | ❌ Missing `PreToolUse`/`PostToolUse` | ✅ **IMPLEMENTED** `tool.execute.*` | **Critical** - Understand what AI actually does |
+| File operations | ❌ N/A (via hooks) | ⏳ Pending `file.edited` | **High** - Track code churn |
+| Error tracking | ❌ Missing `PostToolUseFailure` | ⏳ Pending `session.error` | **Medium** - Debugging/quality metrics |
+| Compaction events | ❌ Not available | ⏳ Pending `session.compacted` | **Medium** - Context window analytics |
 | Enhanced metadata | ❌ Partial | ❌ Partial | **Medium** - Complete session picture |
 
 ## Phase 1: Tool Usage Tracking (Priority: Critical)
@@ -397,23 +401,23 @@ Each new table needs:
 
 ## Implementation Order
 
-### Sprint 1: Foundation
-1. Add migration framework to Go daemon
-2. Create `tools` table with indexes
-3. Add `upsertTool` RPC method
-4. Add TypeScript `ToolPayload` schema and RPC method
+### Sprint 1: Foundation ✅ COMPLETE
+1. ✅ Create `tools` table with indexes (schema auto-created on daemon start)
+2. ✅ Add `upsertTool` RPC method (Go handler + TypeScript client)
+3. ✅ Add TypeScript `ToolPayload` schema and RPC method
+4. ⏳ Add migration framework to Go daemon (deferred - using auto-create for now)
 
 ### Sprint 2: Claude Code Tool Tracking
 1. Update `hooks.json` with PreToolUse/PostToolUse/PostToolUseFailure
-2. Add Zod schemas for tool events
+2. Add Zod schemas for Claude tool events (PreToolUse, PostToolUse, PostToolUseFailure)
 3. Add handlers in `index.ts` for tool events
 4. Generate tool IDs and link to sessions
 
-### Sprint 3: OpenCode Tool Tracking
-1. Add `tool.execute.before`/`tool.execute.after` event handling
-2. Create tool staging utilities (similar to message aggregation)
-3. Add Zod schemas for tool events
-4. Test with actual OpenCode tool usage
+### Sprint 3: OpenCode Tool Tracking ✅ COMPLETE
+1. ✅ Add `tool.execute.before`/`tool.execute.after` event handling
+2. ✅ Create tool staging utilities (similar to message aggregation)
+3. ✅ Add Zod schemas for tool events (ToolExecuteBeforeSchema, ToolExecuteAfterSchema)
+4. ⏳ Test with actual OpenCode tool usage (requires manual testing)
 
 ### Sprint 4: OpenCode-Specific Features
 1. Implement `file.edited` tracking
@@ -481,12 +485,20 @@ ORDER BY compaction_count DESC;
 
 ## Success Criteria
 
+### Phase 1 (Tool Tracking) - Partially Complete
+- [x] Database schema supports tool tracking (`tools` table created)
+- [x] RPC API supports tool upserts (`upsertTool` method)
+- [x] OpenCode plugin captures tool usage events
+- [x] Tool outputs truncated at 10KB to prevent bloat
+- [x] File paths extracted for file operations (Read/Write/Edit)
+- [ ] Claude Code plugin captures tool usage (PreToolUse/PostToolUse hooks)
 - [ ] All Bash commands captured with full text and exit status
-- [ ] All file operations (Read/Write/Edit) captured with paths
 - [ ] Tool error rate measurable by tool type
-- [ ] File edit heatmap available (most edited files)
-- [ ] Session error rate trackable over time
-- [ ] Compaction events show context window pressure
+
+### Phase 2-5 (Pending)
+- [ ] File edit heatmap available (most edited files) - needs `file.edited` events
+- [ ] Session error rate trackable over time - needs `session.error` events
+- [ ] Compaction events show context window pressure - needs `session.compacted` events
 - [ ] Zero performance degradation in plugins
 - [ ] Migrations work on existing databases
 
@@ -498,28 +510,31 @@ Diagram
 ```mermaid
 flowchart TB
     subgraph Phase1[Phase 1: Tool Tracking]
-        P1_1[Add tools table]
-        P1_2[Claude Code Pre/PostToolUse hooks]
-        P1_3[OpenCode tool.execute.* events]
+        P1_1[✅ Add tools table]
+        P1_2[❌ Claude Code Pre/PostToolUse hooks]
+        P1_3[✅ OpenCode tool.execute.* events]
     end
 
     subgraph Phase2[Phase 2: OpenCode Specific]
-        P2_1[file.edited tracking]
-        P2_2[session.error tracking]
-        P2_3[session.compacted tracking]
+        P2_1[⏳ file.edited tracking]
+        P2_2[⏳ session.error tracking]
+        P2_3[⏳ session.compacted tracking]
     end
 
     subgraph Phase3[Phase 3: Enhanced Metadata]
-        P3_1[permission_mode tracking]
-        P3_2[end_reason tracking]
-        P3_3[message/tool counts]
+        P3_1[⏳ permission_mode tracking]
+        P3_2[⏳ end_reason tracking]
+        P3_3[⏳ message/tool counts]
     end
 
     subgraph Phase4[Phase 4: Migrations & Polish]
-        P4_1[Migration framework]
-        P4_2[Analytics queries]
-        P4_3[Performance optimization]
+        P4_1[⏳ Migration framework]
+        P4_2[⏳ Analytics queries]
+        P4_3[⏳ Performance optimization]
     end
 
     Phase1 --> Phase2 --> Phase3 --> Phase4
+
+    style P1_1 fill:#90EE90
+    style P1_3 fill:#90EE90
 ```
