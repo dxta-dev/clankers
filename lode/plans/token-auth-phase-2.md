@@ -33,7 +33,7 @@ clankers config set token sk_live_abc123...
 
 ### Sync Client Changes
 
-**File**: `packages/daemon/internal/sync/client.go`
+**File**: `packages/cli/internal/sync/client.go`
 
 ```go
 func (c *Client) sendBatch(data SyncData) error {

@@ -61,7 +61,7 @@ go get github.com/chzyer/readline  # For readline functionality
 go get github.com/c-bata/go-prompt  # Alternative for autocomplete
 ```
 
-**File**: `packages/daemon/internal/cli/interactive.go`
+**File**: `packages/cli/internal/cli/interactive.go`
 
 ```go
 package cli

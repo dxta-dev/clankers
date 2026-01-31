@@ -56,7 +56,7 @@ Provides: Node 24, pnpm, Go, SQLite, Biome, TypeScript LSP.
 
 ## Go Daemon
 
-Location: `packages/daemon/`
+Location: `packages/cli/`
 
 Dependencies:
 - `modernc.org/sqlite` - Pure Go SQLite (no CGO)
@@ -70,7 +70,7 @@ Nix builds with size optimizations for static binaries:
 ```nix
 clankers = pkgs.buildGoModule {
   pname = "clankers";
-  src = ./packages/daemon;
+  src = ./packages/cli;
   vendorHash = "sha256-...";
   ldflags = [ "-s" "-w" ];
   flags = [ "-trimpath" ];

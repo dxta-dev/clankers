@@ -53,7 +53,7 @@ Note: Tokens NOT in config file - stored in keyring only.
 
 ### Keyring Storage
 
-**File**: `packages/daemon/internal/keyring/keyring.go`
+**File**: `packages/cli/internal/keyring/keyring.go`
 
 ```go
 package keyring
@@ -102,7 +102,7 @@ type TokenData struct {
 go get github.com/workos/workos-go/v4/pkg/authkit
 ```
 
-**File**: `packages/daemon/internal/auth/workos.go`
+**File**: `packages/cli/internal/auth/workos.go`
 
 ```go
 package auth
@@ -131,7 +131,7 @@ func (c *WorkOSClient) RefreshToken(ctx context.Context, refreshToken string) (*
 
 ### Token Refresh
 
-**File**: `packages/daemon/internal/sync/client.go`
+**File**: `packages/cli/internal/sync/client.go`
 
 ```go
 func (c *Client) getValidToken() (string, error) {

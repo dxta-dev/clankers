@@ -24,7 +24,7 @@
 
 ### Files Created
 
-1. **`packages/daemon/internal/logging/logging.go`**
+1. **`packages/cli/internal/logging/logging.go`**
    - `LogLevel` type with `debug`, `info`, `warn`, `error`
    - `LogEntry` struct matching JSON schema
    - `Logger` with thread-safe writes (mutex protected)
@@ -34,19 +34,19 @@
    - `Close()` - closes file handle
    - Convenience methods: `Debugf()`, `Infof()`, `Warnf()`, `Errorf()`
 
-2. **`packages/daemon/internal/logging/cleanup.go`**
+2. **`packages/cli/internal/logging/cleanup.go`**
    - `StartCleanupJob(logDir)` - runs cleanup immediately, returns stop channel
    - Removes files matching `clankers-*.jsonl` older than 30 days
    - Background goroutine with 24-hour ticker
 
 ### Files Modified
 
-3. **`packages/daemon/internal/paths/paths.go`**
+3. **`packages/cli/internal/paths/paths.go`**
    - Added `logDirName = "logs"` constant
    - Added `GetLogDir()` - respects `CLANKERS_LOG_PATH` env var
    - Added `GetCurrentLogFile()` - returns `clankers-YYYY-MM-DD.jsonl` path
 
-4. **`packages/daemon/internal/rpc/rpc.go`**
+4. **`packages/cli/internal/rpc/rpc.go`**
    - Added `LogWriteParams` struct for RPC request
    - Added `case "log.write":` to handler switch
    - Added `logWrite()` handler method
@@ -54,7 +54,7 @@
    - Updated `NewHandler()` signature to accept logger
    - Handler sets `entry.Component` from `client.Name` if empty
 
-5. **`packages/daemon/internal/cli/daemon.go`**
+5. **`packages/cli/internal/cli/daemon.go`**
    - Initialize logger: `logging.New(logLevel, paths.GetLogDir())`
    - Start cleanup job: `logging.StartCleanupJob(paths.GetLogDir())`
    - Pass logger to RPC handler: `rpc.NewHandler(store, logger)`
@@ -206,7 +206,7 @@ Location: `~/.local/share/clankers/logs/clankers-2025-01-30.jsonl`
 
 **Go tests (daemon logging package):**
 ```bash
-cd packages/daemon && go test ./internal/logging/... -v
+cd packages/cli && go test ./internal/logging/... -v
 ```
 
 Covers:
@@ -238,7 +238,7 @@ Covers:
 
 Build verification:
 ```bash
-cd packages/daemon && go build ./...
+cd packages/cli && go build ./...
 ```
 
 Run daemon with debug logging:

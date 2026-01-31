@@ -17,7 +17,7 @@ session-002,Debug Session,1738230100
 
 ## Implementation
 
-**File**: `packages/daemon/internal/cli/formatters.go`
+**File**: `packages/cli/internal/cli/formatters.go`
 
 ```go
 type CSVFormatter struct{}

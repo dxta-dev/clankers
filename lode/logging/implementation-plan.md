@@ -13,7 +13,7 @@ A focused, actionable plan to implement the centralized logging system.
 ## Phase 1: Daemon Infrastructure ✅
 
 ### 1.1 Add Log Paths (10 min)
-**File**: `packages/daemon/internal/paths/paths.go`
+**File**: `packages/cli/internal/paths/paths.go`
 
 Add:
 ```go
@@ -33,7 +33,7 @@ func GetCurrentLogFile() string {
 ```
 
 ### 1.2 Create Logging Package (30 min)
-**New**: `packages/daemon/internal/logging/logging.go`
+**New**: `packages/cli/internal/logging/logging.go`
 
 Core logic:
 - `LogLevel` type with constants: `debug`, `info`, `warn`, `error`
@@ -47,7 +47,7 @@ Core logic:
 **Key behavior**: Daemon-side filtering only (returns early if entry level < minLevel).
 
 ### 1.3 Add Cleanup Job (20 min)
-**New**: `packages/daemon/internal/logging/cleanup.go`
+**New**: `packages/cli/internal/logging/cleanup.go`
 
 ```go
 func StartCleanupJob(logDir string) chan<- struct{}
@@ -57,7 +57,7 @@ func StartCleanupJob(logDir string) chan<- struct{}
 - Returns stop channel for graceful shutdown
 
 ### 1.4 Add RPC Handler (15 min)
-**File**: `packages/daemon/internal/rpc/rpc.go`
+**File**: `packages/cli/internal/rpc/rpc.go`
 
 Add to switch statement:
 ```go
@@ -72,7 +72,7 @@ Handler:
 - Handle fire-and-forget (client may disconnect early)
 
 ### 1.5 Wire Into Daemon (20 min)
-**File**: `packages/daemon/internal/cli/daemon.go`
+**File**: `packages/cli/internal/cli/daemon.go`
 
 Changes:
 - Create log directory on startup: `os.MkdirAll(paths.GetLogDir(), 0755)`
@@ -274,8 +274,8 @@ logger.info("Connected to daemon");
 
 ### 5.1 Update Commands (15 min)
 Replace `fmt.Printf` with structured logging in:
-- `packages/daemon/internal/cli/query.go`
-- `packages/daemon/internal/cli/config.go`
+- `packages/cli/internal/cli/query.go`
+- `packages/cli/internal/cli/config.go`
 
 Keep stdout for command output (query results, tables). Logs go to file.
 

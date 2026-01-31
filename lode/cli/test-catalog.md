@@ -14,7 +14,7 @@
 
 ```bash
 # Run all Go unit tests (native)
-cd packages/daemon && go test ./internal/...
+cd packages/cli && go test ./internal/...
 
 # Run as part of nix flake check
 nix flake check
@@ -61,7 +61,7 @@ The following tests were manually executed to validate the CLI implementation:
 
 ## Recommended Unit Tests (Go)
 
-Unit tests in `packages/daemon/internal/config/config_test.go`:
+Unit tests in `packages/cli/internal/config/config_test.go`:
 
 | Test Name | Description | Priority | Status |
 |-----------|-------------|----------|--------|
@@ -81,7 +81,7 @@ Unit tests in `packages/daemon/internal/config/config_test.go`:
 | `TestApplyEnvOverrides` | Environment variables override config values | Medium | ✅ Done |
 | `TestApplyEnvOverridesInvalidBool` | Invalid env bool doesn't change value | Medium | ✅ Done |
 
-Unit tests in `packages/daemon/internal/paths/paths_test.go`:
+Unit tests in `packages/cli/internal/paths/paths_test.go`:
 
 | Test Name | Description | Priority | Status |
 |-----------|-------------|----------|--------|
@@ -90,7 +90,7 @@ Unit tests in `packages/daemon/internal/paths/paths_test.go`:
 | `TestGetConfigPath` | Returns correct config path | Medium | ✅ Done |
 | `TestGetSocketPath` | Returns correct socket path per OS | Medium | ✅ Done |
 
-Unit tests in `packages/daemon/internal/storage/storage_test.go`:
+Unit tests in `packages/cli/internal/storage/storage_test.go`:
 
 | Test Name | Description | Priority | Status |
 |-----------|-------------|----------|--------|
@@ -108,7 +108,7 @@ Unit tests in `packages/daemon/internal/storage/storage_test.go`:
 | `TestGetTableSchema` | Returns PRAGMA table_info columns | Medium | ✅ Done |
 | `TestSuggestColumnNames` | Suggests similar columns | Low | ✅ Done |
 
-Unit tests in `packages/daemon/internal/formatters/formatters_test.go`:
+Unit tests in `packages/cli/internal/formatters/formatters_test.go`:
 
 | Test Name | Description | Priority | Status |
 |-----------|-------------|----------|--------|
@@ -140,7 +140,7 @@ Integration tests should be added as a Nix derivation that builds and tests the 
 ### Nix Test Structure
 
 ```nix
-# packages/daemon/tests/cli-integration.nix
+# packages/cli/tests/cli-integration.nix
 { pkgs, clankers }:
 
 pkgs.runCommand "clankers-cli-integration" {}
@@ -230,10 +230,10 @@ flowchart LR
 
 ## Related Files
 
-- `packages/daemon/internal/config/config.go` - Config logic
-- `packages/daemon/internal/paths/paths.go` - Path resolution
-- `packages/daemon/internal/storage/storage.go` - Database operations
-- `packages/daemon/internal/cli/*.go` - CLI commands
+- `packages/cli/internal/config/config.go` - Config logic
+- `packages/cli/internal/paths/paths.go` - Path resolution
+- `packages/cli/internal/storage/storage.go` - Database operations
+- `packages/cli/internal/cli/*.go` - CLI commands
 
 ---
 

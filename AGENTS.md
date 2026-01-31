@@ -26,9 +26,9 @@ pnpm test              # Run Go + TypeScript tests
 ```bash
 pnpm test:go           # Run all Go unit tests
 # Or:
-cd packages/daemon && go test ./...           # All tests
-cd packages/daemon && go test ./internal/logging/... -v   # Specific package with verbose output
-cd packages/daemon && go test ./internal/logging/... -run TestNew   # Single test
+cd packages/cli && go test ./...           # All tests
+cd packages/cli && go test ./internal/logging/... -v   # Specific package with verbose output
+cd packages/cli && go test ./internal/logging/... -run TestNew   # Single test
 ```
 
 **TypeScript tests only:**
@@ -61,9 +61,9 @@ CLANKERS_SOCKET_PATH=/tmp/test.sock pnpm exec tsx tests/integration.ts
 - `packages/core/src/schemas.ts` defines Zod schemas for validation boundaries.
 - `packages/core/src/aggregation.ts` handles message assembly.
 - `packages/core/src/rpc-client.ts` owns the JSON-RPC client for the daemon.
-- `packages/daemon/cmd/clankers/main.go` is the daemon entry point.
-- `packages/daemon/internal/rpc/rpc.go` handles JSON-RPC handlers.
-- `packages/daemon/internal/storage/storage.go` owns SQLite persistence.
+- `packages/cli/cmd/clankers/main.go` is the daemon entry point.
+- `packages/cli/internal/rpc/rpc.go` handles JSON-RPC handlers.
+- `packages/cli/internal/storage/storage.go` owns SQLite persistence.
 
 ## Tooling & Environment
 - TypeScript is strict and ESM-only.
@@ -124,7 +124,7 @@ CLANKERS_SOCKET_PATH=/tmp/test.sock pnpm exec tsx tests/integration.ts
 - Always enable FK enforcement: `PRAGMA foreign_keys = ON;`.
 - Use idempotent upserts for sessions and messages.
 - Use prepared statements for repeated writes.
-- Default DB path: OS app data root under `clankers/` (see `packages/daemon/internal/paths/paths.go`).
+- Default DB path: OS app data root under `clankers/` (see `packages/cli/internal/paths/paths.go`).
 - Allow override via `CLANKERS_DB_PATH`.
 
 ## Plugin Behavior Conventions

@@ -22,7 +22,7 @@
           buildGoModule {
             pname = "clankers";
             version = "0.1.0";
-            src = ./packages/daemon;
+            src = ./packages/cli;
             vendorHash = "sha256-e8w2sXRMbrTCnwpCiNFCKAIxznIIxG/Frwdqn1KG1HQ=";
 
             ldflags = [
@@ -266,7 +266,7 @@
             pkgs.buildGoModule {
               pname = "clankers-${name}";
               version = "0.1.0";
-              src = ./packages/daemon;
+              src = ./packages/cli;
               vendorHash = "sha256-e8w2sXRMbrTCnwpCiNFCKAIxznIIxG/Frwdqn1KG1HQ=";
 
               ldflags = [
@@ -318,7 +318,7 @@
           clankers = pkgs.buildGoModule {
             pname = "clankers";
             version = "0.1.0";
-            src = ./packages/daemon;
+            src = ./packages/cli;
             vendorHash = "sha256-e8w2sXRMbrTCnwpCiNFCKAIxznIIxG/Frwdqn1KG1HQ=";
 
             ldflags = [
@@ -379,7 +379,7 @@
           go-tests = pkgs.buildGoModule {
             pname = "clankers-go-tests";
             version = "0.1.0";
-            src = ./packages/daemon;
+            src = ./packages/cli;
             vendorHash = "sha256-e8w2sXRMbrTCnwpCiNFCKAIxznIIxG/Frwdqn1KG1HQ=";
 
             ldflags = [

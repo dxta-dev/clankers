@@ -22,7 +22,7 @@ Step-by-step guide to implement the clankers CLI with Turso sync and web service
 
 ### Step 1.1: Add Config Package
 
-**File**: `packages/daemon/internal/config/config.go`
+**File**: `packages/cli/internal/config/config.go`
 
 ```go
 // Platform-aware config path
@@ -50,7 +50,7 @@ type Profile struct {
 
 ### Step 1.2: Create CLI Command Structure
 
-**File**: `packages/daemon/internal/cli/root.go`
+**File**: `packages/cli/internal/cli/root.go`
 
 Use `spf13/cobra` for command structure:
 
@@ -74,7 +74,7 @@ go get github.com/spf13/cobra
 
 ### Step 1.3: Update Main Entry Point
 
-**File**: `packages/daemon/cmd/clankers/main.go`
+**File**: `packages/cli/cmd/clankers/main.go`
 
 Change from:
 ```go
@@ -121,7 +121,7 @@ $ clankers config list
 
 ### Step 2.1: Add Query Methods to Storage
 
-**File**: `packages/daemon/internal/storage/storage.go`
+**File**: `packages/cli/internal/storage/storage.go`
 
 Add methods:
 ```go
@@ -139,7 +139,7 @@ func (s *Store) ExecuteQuery(sql string) ([]map[string]interface{}, error)
 
 ### Step 2.2: Create Query Output Formatters
 
-**File**: `packages/daemon/internal/cli/formatters.go`
+**File**: `packages/cli/internal/cli/formatters.go`
 
 ```go
 type Formatter interface {
@@ -157,7 +157,7 @@ type JSONFormatter struct{}
 
 ### Step 2.3: Implement Query Command
 
-**File**: `packages/daemon/internal/cli/query.go`
+**File**: `packages/cli/internal/cli/query.go`
 
 ```bash
 clankers query "SELECT * FROM sessions LIMIT 10"
@@ -340,7 +340,7 @@ $ curl -X POST http://localhost:8080/sync/batch \
 
 ### Step 4.1: Create Sync Manager
 
-**File**: `packages/daemon/internal/sync/manager.go`
+**File**: `packages/cli/internal/sync/manager.go`
 
 ```go
 type Manager struct {
@@ -369,7 +369,7 @@ func (m *Manager) SyncNow() error  // For manual sync
 
 ### Step 4.2: Implement Sync Logic
 
-**File**: `packages/daemon/internal/sync/sync.go`
+**File**: `packages/cli/internal/sync/sync.go`
 
 ```go
 func (m *Manager) performSync() error {
@@ -390,7 +390,7 @@ func (m *Manager) performSync() error {
 
 ### Step 4.3: Add Sync State Tracking
 
-**File**: `packages/daemon/internal/storage/storage.go`
+**File**: `packages/cli/internal/storage/storage.go`
 
 Add to SQLite schema:
 ```sql
@@ -410,7 +410,7 @@ CREATE TABLE IF NOT EXISTS sync_state (
 
 ### Step 4.4: Implement Sync Subcommands
 
-**File**: `packages/daemon/internal/cli/sync.go`
+**File**: `packages/cli/internal/cli/sync.go`
 
 ```bash
 clankers sync now     # Force immediate sync
@@ -426,7 +426,7 @@ clankers sync pending # Show pending changes count
 
 ### Step 4.5: Integrate with Daemon
 
-**File**: `packages/daemon/cmd/clankers/main.go`
+**File**: `packages/cli/cmd/clankers/main.go`
 
 ```go
 func runDaemon(cfg *config.Config) {
@@ -526,7 +526,7 @@ Syncing... 5 sessions, 12 messages uploaded.
 
 ```bash
 # 1. Build and install CLI
-$ cd packages/daemon
+$ cd packages/cli
 $ go build -o clankers cmd/clankers/main.go
 $ cp clankers /usr/local/bin/
 

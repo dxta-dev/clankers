@@ -11,7 +11,7 @@
 		"lint": "biome lint .",
 		"format": "biome format --write .",
 		"test": "pnpm test:go && pnpm test:ts",
-		"test:go": "cd packages/daemon && go test ./...",
+		"test:go": "cd packages/cli && go test ./...",
 		"test:ts": "pnpm --filter @dxta-dev/clankers-core test"
 	},
 	"devDependencies": {

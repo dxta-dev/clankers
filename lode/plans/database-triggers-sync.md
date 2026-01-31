@@ -74,7 +74,7 @@ END;
 
 ### Watcher
 
-**File**: `packages/daemon/internal/sync/watcher.go`
+**File**: `packages/cli/internal/sync/watcher.go`
 
 ```go
 type TriggerWatcher struct {

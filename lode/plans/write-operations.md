@@ -36,7 +36,7 @@ Type 'yes' to continue:
 
 ### SQL Validation
 
-**File**: `packages/daemon/internal/query/safety.go`
+**File**: `packages/cli/internal/query/safety.go`
 
 ```go
 package query
