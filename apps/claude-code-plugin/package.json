@@ -11,10 +11,15 @@
 	},
 	"files": ["src", "dist"],
 	"scripts": {
-		"build": "pnpm exec esbuild ./src/index.ts --bundle --outfile=dist/index.js --platform=node --format=esm --target=node24"
+		"build": "pnpm exec esbuild ./src/index.ts --bundle --outfile=dist/index.js --platform=node --format=esm --target=node24",
+		"test": "vitest run",
+		"test:watch": "vitest"
 	},
 	"dependencies": {
 		"@dxta-dev/clankers-core": "workspace:*",
 		"zod": "^3.25.72"
+	},
+	"devDependencies": {
+		"vitest": "^3.0.0"
 	}
 }

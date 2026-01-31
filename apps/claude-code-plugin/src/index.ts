@@ -1,14 +1,22 @@
 import {
 	createLogger,
 	createRpcClient,
+	stageToolStart,
+	completeToolExecution,
+	extractFilePath,
+	truncateToolOutput,
 	type MessagePayload,
 	type SessionPayload,
+	type ToolPayload,
 } from "@dxta-dev/clankers-core";
 import {
 	SessionEndSchema,
 	SessionStartSchema,
 	StopSchema,
 	UserPromptSchema,
+	PreToolUseSchema,
+	PostToolUseSchema,
+	PostToolUseFailureSchema,
 } from "./schemas.js";
 import type {
 	ClaudeCodeHooks,
@@ -16,6 +24,9 @@ import type {
 	SessionStartEvent,
 	StopEvent,
 	UserPromptEvent,
+	PreToolUseEvent,
+	PostToolUseEvent,
+	PostToolUseFailureEvent,
 } from "./types.js";
 
 const logger = createLogger({ component: "claude-plugin" });
@@ -31,6 +42,10 @@ function generateMessageId(sessionId: string, role: string): string {
 	const count = (messageCounters.get(key) ?? 0) + 1;
 	messageCounters.set(key, count);
 	return `${sessionId}-${role}-${count}`;
+}
+
+function generateToolId(sessionId: string, toolUseId: string): string {
+	return `${sessionId}-${toolUseId}`;
 }
 
 function getProjectName(cwd: string): string | undefined {
@@ -397,6 +412,127 @@ export function createPlugin(): ClaudeCodeHooks | null {
 				logger.error("Failed to upsert assistant message", {
 					error: error instanceof Error ? error.message : String(error),
 				});
+			}
+		},
+
+		PreToolUse: async (event: PreToolUseEvent) => {
+			const connected = await waitForConnection();
+			if (!connected) return;
+
+			const parsed = PreToolUseSchema.safeParse(event);
+			if (!parsed.success) {
+				logger.warn("Invalid PreToolUse event", { error: parsed.error.message });
+				return;
+			}
+
+			const data = parsed.data;
+			const toolId = generateToolId(data.session_id, data.tool_use_id);
+
+			// Stage tool execution start
+			stageToolStart(toolId, {
+				sessionId: data.session_id,
+				toolName: data.tool_name,
+				toolInput: JSON.stringify(data.tool_input),
+				createdAt: Date.now(),
+			});
+
+			logger.debug(`Tool started: ${data.tool_name}`, {
+				toolId,
+				sessionId: data.session_id,
+				tool: data.tool_name,
+			});
+		},
+
+		PostToolUse: async (event: PostToolUseEvent) => {
+			const connected = await waitForConnection();
+			if (!connected) return;
+
+			const parsed = PostToolUseSchema.safeParse(event);
+			if (!parsed.success) {
+				logger.warn("Invalid PostToolUse event", { error: parsed.error.message });
+				return;
+			}
+
+			const data = parsed.data;
+			const toolId = generateToolId(data.session_id, data.tool_use_id);
+
+			// Extract file path for file operations
+			const toolInputStr = JSON.stringify(data.tool_input);
+			const filePath = extractFilePath(data.tool_name, toolInputStr);
+
+			// Truncate output if needed
+			const toolOutput = truncateToolOutput(JSON.stringify(data.tool_response));
+
+			// Complete tool execution
+			const tool = completeToolExecution(toolId, {
+				toolOutput,
+				success: true,
+				durationMs: undefined, // Claude doesn't provide duration in PostToolUse
+			});
+
+			if (tool) {
+				// Add file path if extracted
+				if (filePath) {
+					tool.filePath = filePath;
+				}
+
+				try {
+					await rpc.upsertTool(tool);
+					logger.debug(`Tool completed: ${data.tool_name}`, {
+						toolId,
+						success: true,
+					});
+				} catch (error) {
+					logger.error("Failed to upsert tool", {
+						error: error instanceof Error ? error.message : String(error),
+					});
+				}
+			}
+		},
+
+		PostToolUseFailure: async (event: PostToolUseFailureEvent) => {
+			const connected = await waitForConnection();
+			if (!connected) return;
+
+			const parsed = PostToolUseFailureSchema.safeParse(event);
+			if (!parsed.success) {
+				logger.warn("Invalid PostToolUseFailure event", { error: parsed.error.message });
+				return;
+			}
+
+			const data = parsed.data;
+			const toolId = generateToolId(data.session_id, data.tool_use_id);
+
+			// Extract file path for file operations
+			const toolInputStr = JSON.stringify(data.tool_input);
+			const filePath = extractFilePath(data.tool_name, toolInputStr);
+
+			// Complete tool execution as failed
+			const tool = completeToolExecution(toolId, {
+				success: false,
+				errorMessage: data.error,
+				durationMs: undefined,
+			});
+
+			if (tool) {
+				// Add file path if extracted
+				if (filePath) {
+					tool.filePath = filePath;
+				}
+
+				try {
+					await rpc.upsertTool(tool);
+					logger.debug(`Tool failed: ${data.tool_name}`, {
+						toolId,
+						success: false,
+						error: data.error,
+						isInterrupt: data.is_interrupt,
+					});
+				} catch (error) {
+					logger.error("Failed to upsert tool failure", {
+						error: error instanceof Error ? error.message : String(error),
+					});
+				}
 			}
 		},
 

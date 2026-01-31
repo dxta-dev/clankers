@@ -237,6 +237,42 @@ flowchart LR
 
 ---
 
+## Plugin Tests
+
+### Claude Code Plugin Unit Tests
+
+Unit tests in `apps/claude-code-plugin/tests/schemas.test.ts`:
+
+| Test Name | Description | Priority | Status |
+|-----------|-------------|----------|--------|
+| `PreToolUseSchema - validates valid event` | Validates complete PreToolUse events | High | ✅ Done |
+| `PreToolUseSchema - requires mandatory fields` | Ensures session_id, tool_name, tool_use_id required | High | ✅ Done |
+| `PreToolUseSchema - permission_mode optional` | Verifies permission_mode is not required | Medium | ✅ Done |
+| `PreToolUseSchema - validates hook_event_name` | Only accepts "PreToolUse" | High | ✅ Done |
+| `PreToolUseSchema - handles various tools` | Works with Bash, Read, Write, Edit, etc. | Medium | ✅ Done |
+| `PreToolUseSchema - handles MCP tools` | Supports mcp__* tool names | Medium | ✅ Done |
+| `PostToolUseSchema - validates valid event` | Validates complete PostToolUse events | High | ✅ Done |
+| `PostToolUseSchema - requires tool_response` | Ensures tool_response is required | High | ✅ Done |
+| `PostToolUseSchema - handles complex responses` | Works with nested objects/arrays | Medium | ✅ Done |
+| `PostToolUseFailureSchema - validates valid event` | Validates failure events | High | ✅ Done |
+| `PostToolUseFailureSchema - requires error field` | Ensures error message is required | High | ✅ Done |
+| `PostToolUseFailureSchema - is_interrupt optional` | Handles user interruption flag | Medium | ✅ Done |
+
+### Recommended Integration Tests (Plugin-Level)
+
+| Test Name | Description | Priority |
+|-----------|-------------|----------|
+| `test-pretooluse-hook` | PreToolUse stages tool in memory | High |
+| `test-posttooluse-hook` | PostToolUse completes and upserts tool | High |
+| `test-posttoolusefailure-hook` | PostToolUseFailure records errors | High |
+| `test-tool-file-path-extraction` | File paths extracted from Read/Write/Edit | Medium |
+| `test-tool-output-truncation` | Large outputs truncated at 10KB | Medium |
+| `test-tool-id-generation` | Tool IDs use session_id + tool_use_id | High |
+| `test-tool-linking-to-session` | Tools reference correct session | High |
+| `test-async-hook-execution` | Hooks don't block Claude Code | Medium |
+
+---
+
 ## Links
 
 - [Test Results](../tmp/test-plan-cli-phase1-results.md)

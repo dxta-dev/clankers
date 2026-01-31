@@ -2,9 +2,9 @@
 
 Complete roadmap for capturing tool usage, file operations, errors, and enhanced metadata across both Claude Code and OpenCode plugins.
 
-**Last Updated:** 2026-01-31
+**Last Updated:** 2026-01-31 (Phase 1 Complete - Claude Code Tool Tracking Implemented)
 
-**Current Status:** Phase 1 (Tool Tracking) partially complete. OpenCode tool tracking implemented; Claude Code tool tracking pending.
+**Current Status:** Phase 1 (Tool Tracking) ✅ COMPLETE. Both OpenCode and Claude Code tool tracking implemented.
 
 ## Overview
 
@@ -12,11 +12,11 @@ This plan addresses the major data gaps identified in the current plugin impleme
 
 | Gap | Claude Code | OpenCode | Value |
 |-----|-------------|----------|-------|
-| Tool usage tracking | ❌ Missing `PreToolUse`/`PostToolUse` | ✅ **IMPLEMENTED** `tool.execute.*` | **Critical** - Understand what AI actually does |
-| File operations | ❌ N/A (via hooks) | ⏳ Pending `file.edited` | **High** - Track code churn |
-| Error tracking | ❌ Missing `PostToolUseFailure` | ⏳ Pending `session.error` | **Medium** - Debugging/quality metrics |
+| Tool usage tracking | ✅ **IMPLEMENTED** `PreToolUse`/`PostToolUse`/`PostToolUseFailure` | ✅ **IMPLEMENTED** `tool.execute.*` | **Critical** - Understand what AI actually does |
+| File operations | ⏳ Pending (via PostToolUse) | ⏳ Pending `file.edited` | **High** - Track code churn |
+| Error tracking | ✅ **IMPLEMENTED** `PostToolUseFailure` | ⏳ Pending `session.error` | **Medium** - Debugging/quality metrics |
 | Compaction events | ❌ Not available | ⏳ Pending `session.compacted` | **Medium** - Context window analytics |
-| Enhanced metadata | ❌ Partial | ❌ Partial | **Medium** - Complete session picture |
+| Enhanced metadata | ⏳ Partial (SessionEnd fields ready) | ⏳ Partial | **Medium** - Complete session picture |
 
 ## Phase 1: Tool Usage Tracking (Priority: Critical)
 
@@ -407,11 +407,12 @@ Each new table needs:
 3. ✅ Add TypeScript `ToolPayload` schema and RPC method
 4. ⏳ Add migration framework to Go daemon (deferred - using auto-create for now)
 
-### Sprint 2: Claude Code Tool Tracking
-1. Update `hooks.json` with PreToolUse/PostToolUse/PostToolUseFailure
-2. Add Zod schemas for Claude tool events (PreToolUse, PostToolUse, PostToolUseFailure)
-3. Add handlers in `index.ts` for tool events
-4. Generate tool IDs and link to sessions
+### Sprint 2: Claude Code Tool Tracking ✅ COMPLETE
+1. ✅ Update `hooks.json` with PreToolUse/PostToolUse/PostToolUseFailure
+2. ✅ Add Zod schemas for Claude tool events (PreToolUse, PostToolUse, PostToolUseFailure)
+3. ✅ Add handlers in `index.ts` for tool events
+4. ✅ Generate tool IDs and link to sessions
+5. ✅ Unit tests for schema validation
 
 ### Sprint 3: OpenCode Tool Tracking ✅ COMPLETE
 1. ✅ Add `tool.execute.before`/`tool.execute.after` event handling
@@ -485,15 +486,15 @@ ORDER BY compaction_count DESC;
 
 ## Success Criteria
 
-### Phase 1 (Tool Tracking) - Partially Complete
+### Phase 1 (Tool Tracking) - ✅ COMPLETE
 - [x] Database schema supports tool tracking (`tools` table created)
 - [x] RPC API supports tool upserts (`upsertTool` method)
 - [x] OpenCode plugin captures tool usage events
 - [x] Tool outputs truncated at 10KB to prevent bloat
 - [x] File paths extracted for file operations (Read/Write/Edit)
-- [ ] Claude Code plugin captures tool usage (PreToolUse/PostToolUse hooks)
-- [ ] All Bash commands captured with full text and exit status
-- [ ] Tool error rate measurable by tool type
+- [x] Claude Code plugin captures tool usage (PreToolUse/PostToolUse/PostToolUseFailure hooks)
+- [x] All Bash commands captured with full text and exit status
+- [x] Tool error rate measurable by tool type
 
 ### Phase 2-5 (Pending)
 - [ ] File edit heatmap available (most edited files) - needs `file.edited` events
@@ -509,9 +510,9 @@ Links: [data gaps](../data-model/data-gaps.md), [claude plugin](../claude/plugin
 Diagram
 ```mermaid
 flowchart TB
-    subgraph Phase1[Phase 1: Tool Tracking]
+    subgraph Phase1[Phase 1: Tool Tracking ✅ COMPLETE]
         P1_1[✅ Add tools table]
-        P1_2[❌ Claude Code Pre/PostToolUse hooks]
+        P1_2[✅ Claude Code Pre/PostToolUse hooks]
         P1_3[✅ OpenCode tool.execute.* events]
     end
 
@@ -536,5 +537,6 @@ flowchart TB
     Phase1 --> Phase2 --> Phase3 --> Phase4
 
     style P1_1 fill:#90EE90
+    style P1_2 fill:#90EE90
     style P1_3 fill:#90EE90
 ```

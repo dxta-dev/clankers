@@ -32,6 +32,10 @@ importers:
       zod:
         specifier: ^3.25.72
         version: 3.25.76
+    devDependencies:
+      vitest:
+        specifier: ^3.0.0
+        version: 3.2.4(@types/node@25.1.0)(tsx@4.21.0)
 
   apps/cursor-plugin:
     dependencies:

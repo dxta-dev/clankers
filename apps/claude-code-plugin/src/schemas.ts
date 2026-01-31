@@ -57,3 +57,40 @@ export const SessionEndSchema = z.object({
 	costEstimate: z.number().optional(),
 	cost_estimate: z.number().optional(),
 });
+
+// Tool usage tracking schemas
+export const PreToolUseSchema = z.object({
+	session_id: z.string(),
+	transcript_path: z.string(),
+	cwd: z.string(),
+	permission_mode: z.string().optional(),
+	hook_event_name: z.literal("PreToolUse"),
+	tool_name: z.string(),
+	tool_input: z.record(z.unknown()),
+	tool_use_id: z.string(),
+});
+
+export const PostToolUseSchema = z.object({
+	session_id: z.string(),
+	transcript_path: z.string(),
+	cwd: z.string(),
+	permission_mode: z.string().optional(),
+	hook_event_name: z.literal("PostToolUse"),
+	tool_name: z.string(),
+	tool_input: z.record(z.unknown()),
+	tool_response: z.record(z.unknown()),
+	tool_use_id: z.string(),
+});
+
+export const PostToolUseFailureSchema = z.object({
+	session_id: z.string(),
+	transcript_path: z.string(),
+	cwd: z.string(),
+	permission_mode: z.string().optional(),
+	hook_event_name: z.literal("PostToolUseFailure"),
+	tool_name: z.string(),
+	tool_input: z.record(z.unknown()),
+	tool_use_id: z.string(),
+	error: z.string(),
+	is_interrupt: z.boolean().optional(),
+});

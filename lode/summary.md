@@ -1,8 +1,8 @@
 Clankers is a pnpm monorepo with app packages for OpenCode, Cursor, and Claude Code plus a shared `packages/core` library and a Go CLI under `packages/cli/`; plugins validate events with Zod, aggregate message parts in memory, and call the clankers daemon over JSON-RPC to persist sessions and messages into a local SQLite file; the daemon owns all database operations including schema creation, migrations, and upserts, listens on a Unix socket (or Windows named pipe), and resolves paths using platform-specific rules with environment overrides. A unified structured logging system (daemon-owned, JSON Lines format, daily rotation with 30-day retention) allows all components to log to the same destination via RPC.
 
 Plugin Status:
-- ✅ OpenCode Plugin: Complete (event-based, sessions/messages working)
-- ✅ Claude Code Plugin: Complete (shell-based hooks via `hooks.json` + `runner.mjs` bridge to TypeScript)
+- ✅ OpenCode Plugin: Complete (event-based, sessions/messages/tools working)
+- ✅ Claude Code Plugin: Complete (shell-based hooks via `hooks.json` + `runner.mjs`, sessions/messages/tools working)
 - ❌ Cursor Plugin: Not implemented (placeholder exists)
 
 CLI / Daemon Status (Phase 1-2):
