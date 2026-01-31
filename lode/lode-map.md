@@ -51,6 +51,7 @@
   - [plans/web-dashboard](plans/web-dashboard.md)
   - [plans/database-triggers-sync](plans/database-triggers-sync.md)
   - [plans/sync-optimization](plans/sync-optimization.md)
+  - [plans/tool-logging-debug](plans/tool-logging-debug.md)
 - claude/
   - [claude/plugin-system](claude/plugin-system.md)
   - [claude/data-mapping](claude/data-mapping.md)

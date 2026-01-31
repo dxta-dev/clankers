@@ -113,20 +113,37 @@ export const ToolPayloadSchema = z.object({
 
 // OpenCode tool execution schemas
 export const ToolExecuteBeforeSchema = z.object({
-	sessionId: z.string(),
-	tool: z.string(),
-	input: z.record(z.string(), z.unknown()),
-});
+	sessionId: z.string().optional(),
+	sessionID: z.string().optional(),
+	session_id: z.string().optional(),
+	session: z.record(z.string(), z.unknown()).optional(),
+	tool: z.unknown().optional(),
+	toolName: z.string().optional(),
+	tool_name: z.string().optional(),
+	input: z.record(z.string(), z.unknown()).optional(),
+	args: z.record(z.string(), z.unknown()).optional(),
+	output: z.record(z.string(), z.unknown()).optional(),
+}).passthrough();
 
 export const ToolExecuteAfterSchema = z.object({
-	sessionId: z.string(),
-	tool: z.string(),
-	input: z.record(z.string(), z.unknown()),
+	sessionId: z.string().optional(),
+	sessionID: z.string().optional(),
+	session_id: z.string().optional(),
+	session: z.record(z.string(), z.unknown()).optional(),
+	tool: z.unknown().optional(),
+	toolName: z.string().optional(),
+	tool_name: z.string().optional(),
+	input: z.record(z.string(), z.unknown()).optional(),
+	args: z.record(z.string(), z.unknown()).optional(),
 	output: z.record(z.string(), z.unknown()).optional(),
-	success: z.boolean(),
+	response: z.record(z.string(), z.unknown()).optional(),
+	result: z.record(z.string(), z.unknown()).optional(),
+	success: z.boolean().optional(),
+	ok: z.boolean().optional(),
 	error: z.string().optional(),
 	durationMs: z.number().optional(),
-});
+	duration: z.number().optional(),
+}).passthrough();
 
 // OpenCode session error schema
 export const SessionErrorSchema = z.object({

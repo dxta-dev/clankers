@@ -25,9 +25,135 @@ const logger = createLogger({ component: "opencode-plugin" });
 
 const syncedSessions = new Set<string>();
 
+// Cache for the latest session ID to handle tool events that may not include sessionId
+let latestSessionId: string | undefined;
+
+type ToolEventRecord = Record<string, unknown>;
+
+function asRecord(value: unknown): ToolEventRecord | undefined {
+	if (!value || typeof value !== "object" || Array.isArray(value)) {
+		return undefined;
+	}
+	return value as ToolEventRecord;
+}
+
+function pickString(...values: unknown[]): string | undefined {
+	for (const value of values) {
+		if (typeof value === "string" && value.trim() !== "") return value;
+		if (value && typeof value === "object") {
+			const record = value as ToolEventRecord;
+			if (typeof record.name === "string" && record.name.trim() !== "") {
+				return record.name;
+			}
+		}
+	}
+	return undefined;
+}
+
+function normalizeToolSessionId(raw: ToolEventRecord): string | undefined {
+	const session = asRecord(raw.session);
+	// Try to extract session ID from various payload fields, fallback to cached latest session
+	return pickString(raw.sessionId, raw.sessionID, raw.session_id, session?.id) ?? latestSessionId;
+}
+
+function normalizeToolCallId(raw: ToolEventRecord): string | undefined {
+	// OpenCode provides callID that is consistent across before/after hooks
+	// Note: callID may have leading/trailing whitespace, so we trim it
+	const callId = pickString(raw.callID, raw.callId, raw.toolCallId, raw.executionId);
+	return callId?.trim();
+}
+
+function normalizeToolName(raw: ToolEventRecord): string | undefined {
+	const input = asRecord(raw.input);
+	const output = asRecord(raw.output);
+	return pickString(
+		raw.tool,
+		raw.toolName,
+		raw.tool_name,
+		input?.tool,
+		output?.tool,
+	);
+}
+
+function normalizeToolInput(raw: ToolEventRecord): ToolEventRecord | undefined {
+	const output = asRecord(raw.output);
+	return asRecord(raw.input) ?? asRecord(raw.args) ?? asRecord(output?.args);
+}
+
+function normalizeToolOutput(raw: ToolEventRecord): ToolEventRecord | undefined {
+	return asRecord(raw.output) ?? asRecord(raw.response) ?? asRecord(raw.result);
+}
+
+function normalizeToolDuration(raw: ToolEventRecord, output?: ToolEventRecord): number | undefined {
+	const duration = raw.durationMs ?? raw.duration ?? output?.durationMs ?? output?.duration;
+	return typeof duration === "number" ? duration : undefined;
+}
+
+function normalizeToolError(raw: ToolEventRecord, output?: ToolEventRecord): string | undefined {
+	const error = raw.error ?? output?.error;
+	return typeof error === "string" ? error : undefined;
+}
+
+function normalizeToolSuccess(
+	raw: ToolEventRecord,
+	output?: ToolEventRecord,
+	errorMessage?: string,
+): boolean {
+	const success = raw.success ?? raw.ok ?? output?.success ?? output?.ok;
+	if (typeof success === "boolean") return success;
+	if (errorMessage) return false;
+	return true;
+}
+
+function normalizeToolBefore(raw: ToolEventRecord):
+	| { sessionId: string; toolName: string; callId?: string; input?: ToolEventRecord }
+	| null {
+	const sessionId = normalizeToolSessionId(raw);
+	const toolName = normalizeToolName(raw);
+	if (!sessionId || !toolName) return null;
+	return { sessionId, toolName, callId: normalizeToolCallId(raw), input: normalizeToolInput(raw) };
+}
+
+function normalizeToolAfter(raw: ToolEventRecord):
+	| {
+			sessionId: string;
+			toolName: string;
+			callId?: string;
+			input?: ToolEventRecord;
+			output?: ToolEventRecord;
+			success: boolean;
+			errorMessage?: string;
+			durationMs?: number;
+		}
+	| null {
+	const sessionId = normalizeToolSessionId(raw);
+	const toolName = normalizeToolName(raw);
+	if (!sessionId || !toolName) return null;
+	const output = normalizeToolOutput(raw);
+	const errorMessage = normalizeToolError(raw, output);
+	return {
+		sessionId,
+		toolName,
+		callId: normalizeToolCallId(raw),
+		input: normalizeToolInput(raw),
+		output,
+		success: normalizeToolSuccess(raw, output, errorMessage),
+		errorMessage,
+		durationMs: normalizeToolDuration(raw, output),
+	};
+}
+
+type ToastVariant = "info" | "success" | "warning" | "error";
+type ToastClient = {
+	tui: {
+		showToast: (args: { body: { message: string; variant: ToastVariant } }) => unknown;
+	};
+};
+
 async function handleEvent(
 	event: { type: string; properties?: unknown },
 	rpc: RpcClient,
+	client: ToastClient,
 ) {
 	const props = event.properties as unknown;
 
@@ -54,6 +180,9 @@ async function handleEvent(
 			logger.warn("Session event missing session ID", { properties: props });
 			return;
 		}
+
+		// Cache the latest session ID for tool events that may not include it
+		latestSessionId = sessionId;
 		logger.debug(`Session parsed: ${sessionId}`, {
 			sessionID: sessionId,
 			title: session.title,
@@ -117,6 +246,10 @@ async function handleEvent(
 		const info = (props as { info?: unknown })?.info;
 		const parsed = MessageMetadataSchema.safeParse(info);
 		if (!parsed.success) return;
+		// Cache session ID from message events as fallback for tool events
+		if (parsed.data.sessionID) {
+			latestSessionId = parsed.data.sessionID;
+		}
 		stageMessageMetadata(parsed.data);
 		scheduleMessageFinalize(
 			parsed.data.id,
@@ -152,6 +285,10 @@ async function handleEvent(
 		const part = (props as { part?: unknown })?.part;
 		const parsed = MessagePartSchema.safeParse(part);
 		if (!parsed.success) return;
+		// Cache session ID from message events as fallback for tool events
+		if (parsed.data.sessionID) {
+			latestSessionId = parsed.data.sessionID;
+		}
 		stageMessagePart(parsed.data);
 		scheduleMessageFinalize(
 			parsed.data.messageID,
@@ -193,23 +330,30 @@ async function handleEvent(
 			return;
 		}
 
-		const data = parsed.data;
-		const toolId = generateToolId(data.sessionId, data.tool);
+		const data = normalizeToolBefore(parsed.data as ToolEventRecord);
+		if (!data) {
+			logger.debug("Tool execute.before missing required fields", {
+				properties: parsed.data,
+			});
+			return;
+		}
+
+		const toolId = generateToolId(data.sessionId, data.toolName, data.callId);
 
 		// Serialize input for storage
-		const toolInput = JSON.stringify(data.input);
+		const toolInput = data.input ? JSON.stringify(data.input) : undefined;
 
 		stageToolStart(toolId, {
 			sessionId: data.sessionId,
-			toolName: data.tool,
+			toolName: data.toolName,
 			toolInput,
 			createdAt: Date.now(),
 		});
 
-		logger.debug(`Tool started: ${data.tool}`, {
+		logger.debug(`Tool started: ${data.toolName}`, {
 			toolId,
 			sessionId: data.sessionId,
-			tool: data.tool,
+			tool: data.toolName,
 		});
 	}
 
@@ -222,12 +366,19 @@ async function handleEvent(
 			return;
 		}
 
-		const data = parsed.data;
-		const toolId = generateToolId(data.sessionId, data.tool);
+		const data = normalizeToolAfter(parsed.data as ToolEventRecord);
+		if (!data) {
+			logger.debug("Tool execute.after missing required fields", {
+				properties: parsed.data,
+			});
+			return;
+		}
+
+		const toolId = generateToolId(data.sessionId, data.toolName, data.callId);
 
 		// Extract file path for file operations
-		const toolInput = JSON.stringify(data.input);
-		const filePath = extractFilePath(data.tool, toolInput);
+		const toolInput = data.input ? JSON.stringify(data.input) : undefined;
+		const filePath = extractFilePath(data.toolName, toolInput);
 
 		// Truncate output if needed
 		const toolOutput = data.output
@@ -237,7 +388,7 @@ async function handleEvent(
 		const tool = completeToolExecution(toolId, {
 			toolOutput,
 			success: data.success,
-			errorMessage: data.error,
+			errorMessage: data.errorMessage,
 			durationMs: data.durationMs,
 		});
 
@@ -248,7 +399,7 @@ async function handleEvent(
 			}
 
 			await rpc.upsertTool(tool);
-			logger.debug(`Tool completed: ${data.tool}`, {
+			logger.debug(`Tool completed: ${data.toolName}`, {
 				toolId,
 				success: data.success,
 				durationMs: data.durationMs,
@@ -343,6 +494,81 @@ async function handleEvent(
 	}
 }
 
+async function handleToolExecuteBeforeHook(
+	input: unknown,
+	output: unknown,
+	rpc: RpcClient,
+	client: ToastClient,
+): Promise<void> {
+	const raw = {
+		...(asRecord(input) ?? {}),
+		output: asRecord(output),
+	};
+	const parsed = ToolExecuteBeforeSchema.safeParse(raw);
+	if (!parsed.success) return;
+
+	const data = normalizeToolBefore(parsed.data as ToolEventRecord);
+	if (!data) {
+		logger.debug("Tool execute.before missing required fields", {
+			properties: parsed.data,
+		});
+		return;
+	}
+
+	const toolId = generateToolId(data.sessionId, data.toolName, data.callId);
+	const toolInput = data.input ? JSON.stringify(data.input) : undefined;
+
+	stageToolStart(toolId, {
+		sessionId: data.sessionId,
+		toolName: data.toolName,
+		toolInput,
+		createdAt: Date.now(),
+	});
+}
+
+async function handleToolExecuteAfterHook(
+	input: unknown,
+	output: unknown,
+	rpc: RpcClient,
+	client: ToastClient,
+): Promise<void> {
+	const raw = {
+		...(asRecord(input) ?? {}),
+		output: asRecord(output),
+	};
+	const parsed = ToolExecuteAfterSchema.safeParse(raw);
+	if (!parsed.success) return;
+
+	const data = normalizeToolAfter(parsed.data as ToolEventRecord);
+	if (!data) {
+		logger.debug("Tool execute.after missing required fields", {
+			properties: parsed.data,
+		});
+		return;
+	}
+
+	const toolId = generateToolId(data.sessionId, data.toolName, data.callId);
+	const toolInput = data.input ? JSON.stringify(data.input) : undefined;
+	const filePath = extractFilePath(data.toolName, toolInput);
+	const toolOutput = data.output
+		? truncateToolOutput(JSON.stringify(data.output))
+		: undefined;
+
+	const tool = completeToolExecution(toolId, {
+		toolOutput,
+		success: data.success,
+		errorMessage: data.errorMessage,
+		durationMs: data.durationMs,
+	});
+
+	if (tool) {
+		if (filePath) {
+			tool.filePath = filePath;
+		}
+		await rpc.upsertTool(tool);
+	}
+}
+
 // ID counter for generating unique IDs
 let idCounter = 0;
 
@@ -351,9 +577,14 @@ function generateId(): string {
 	return `${Date.now()}-${idCounter}-${Math.random().toString(36).substring(2, 11)}`;
 }
 
-function generateToolId(sessionId: string, toolName: string): string {
+function generateToolId(sessionId: string, toolName: string, callId?: string): string {
+	// Use callID from OpenCode if available (consistent across before/after hooks)
+	// Otherwise fallback to sessionId + toolName + counter (deterministic per session)
+	if (callId) {
+		return `${sessionId}-${toolName}-${callId}`;
+	}
 	idCounter++;
-	return `${sessionId}-${toolName}-${Date.now()}-${idCounter}`;
+	return `${sessionId}-${toolName}-${idCounter}`;
 }
 
 export const ClankersPlugin: Plugin = async ({ client }) => {
@@ -385,9 +616,29 @@ export const ClankersPlugin: Plugin = async ({ client }) => {
 		event: async ({ event }) => {
 			if (!connected) return;
 			try {
-				await handleEvent(event, rpc);
+				await handleEvent(event, rpc, client);
 			} catch (error) {
 				logger.warn("Failed to handle event", {
+					error: error instanceof Error ? { message: error.message } : undefined,
+				});
+			}
+		},
+		"tool.execute.before": async (input, output) => {
+			if (!connected) return;
+			try {
+				await handleToolExecuteBeforeHook(input, output, rpc, client);
+			} catch (error) {
+				logger.warn("Failed to handle tool.execute.before hook", {
+					error: error instanceof Error ? { message: error.message } : undefined,
+				});
+			}
+		},
+		"tool.execute.after": async (input, output) => {
+			if (!connected) return;
+			try {
+				await handleToolExecuteAfterHook(input, output, rpc, client);
+			} catch (error) {
+				logger.warn("Failed to handle tool.execute.after hook", {
 					error: error instanceof Error ? { message: error.message } : undefined,
 				});
 			}

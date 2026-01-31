@@ -13,6 +13,11 @@ Invariants
 - OpenCode session identifiers can arrive as `sessionID` or `id`; normalize to a single session id before upsert.
 - Debug logs emit the raw event type, parsed session fields, and session upsert payloads.
 - Session validation failures are logged at `warn` with Zod error details.
+- Tool events are normalized across payload shapes (`sessionId`/`sessionID`/`session_id`, `tool`/`toolName`/`tool_name`, `input`/`args`/`output.args`).
+- Tool execution events use dedicated hooks (`tool.execute.before`/`tool.execute.after`) rather than the generic `event` handler.
+- Tool events may omit `sessionId`; the plugin caches the latest session ID from `session.*` and `message.*` events to inject as fallback.
+- `latestSessionId` is updated whenever a session or message event is processed, ensuring tool upserts always have a valid session reference.
+- Tool events are processed silently; debug information is logged via the logger (not toast notifications).
 
 Links: [plugins](plugins.md), [aggregation](../ingestion/aggregation.md), [sqlite](../storage/sqlite.md)
 
@@ -25,6 +30,14 @@ if (event.type === "session.updated") {
     message: `Event received: ${event.type}`,
   });
   rpc.upsertSession({ id: session.sessionID, title: session.title ?? "Untitled" });
+}
+
+if (event.type === "tool.execute.after") {
+  const toolName = event.properties?.toolName ?? event.properties?.tool ?? event.properties?.tool_name;
+  const args = event.properties?.input ?? event.properties?.args ?? event.properties?.output?.args;
+  if (toolName && args) {
+    rpc.upsertTool({ id: `${sessionId}-${toolName}`, sessionId, toolName, toolInput: JSON.stringify(args), createdAt: Date.now() });
+  }
 }
 ```
 
