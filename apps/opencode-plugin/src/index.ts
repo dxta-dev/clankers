@@ -3,6 +3,7 @@ import {
 	MessageMetadataSchema,
 	MessagePartSchema,
 	SessionEventSchema,
+	SessionStatusSchema,
 	ToolExecuteBeforeSchema,
 	ToolExecuteAfterSchema,
 	FileEditedSchema,
@@ -89,6 +90,9 @@ async function handleEvent(
 			session.tokens?.output || session.usage?.completionTokens || 0;
 		const cost = session.cost || session.usage?.cost || 0;
 
+		// Extract status from session info if available
+		const sessionStatus = (props as { status?: string })?.status;
+
 		const sessionPayload = {
 			id: sessionId,
 			title: session.title || "Untitled Session",
@@ -97,6 +101,7 @@ async function handleEvent(
 			model: modelId,
 			provider: providerId,
 			source: "opencode" as const,
+			status: sessionStatus,
 			promptTokens,
 			completionTokens,
 			cost,
@@ -327,6 +332,34 @@ async function handleEvent(
 			tokensAfter: data.tokensAfter,
 			messagesBefore: data.messagesBefore,
 			messagesAfter: data.messagesAfter,
+		});
+	}
+
+	// Session status tracking
+	if (event.type === "session.status") {
+		const parsed = SessionStatusSchema.safeParse(props);
+		if (!parsed.success) {
+			logger.debug("Session status validation failed", {
+				error: parsed.error.message,
+			});
+			return;
+		}
+
+		const data = parsed.data;
+
+		// Update session with new status
+		await rpc.upsertSession({
+			id: data.sessionId,
+			status: data.status,
+			// If status is "ended" or "completed", set endedAt
+			...(data.status === "ended" || data.status === "completed"
+				? { endedAt: data.timestamp || Date.now() }
+				: {}),
+		});
+
+		logger.debug(`Session status updated`, {
+			sessionId: data.sessionId,
+			status: data.status,
 		});
 	}
 }

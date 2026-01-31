@@ -64,18 +64,22 @@ export const MessagePartSchema = z
 	.loose();
 
 export const SessionPayloadSchema = z.object({
-	id: z.string(),
-	title: z.string().optional(),
-	projectPath: z.string().optional(),
-	projectName: z.string().optional(),
-	model: z.string().optional(),
-	provider: z.string().optional(),
-	source: z.enum(["opencode", "claude-code"]).optional(),
-	promptTokens: z.number().optional(),
-	completionTokens: z.number().optional(),
-	cost: z.number().optional(),
-	createdAt: z.number().optional(),
-	updatedAt: z.number().optional(),
+  id: z.string(),
+  title: z.string().optional(),
+  projectPath: z.string().optional(),
+  projectName: z.string().optional(),
+  model: z.string().optional(),
+  provider: z.string().optional(),
+  source: z.enum(["opencode", "claude-code"]).optional(),
+  status: z.string().optional(),
+  promptTokens: z.number().optional(),
+  completionTokens: z.number().optional(),
+  cost: z.number().optional(),
+  messageCount: z.number().optional(),
+  toolCallCount: z.number().optional(),
+  createdAt: z.number().optional(),
+  updatedAt: z.number().optional(),
+  endedAt: z.number().optional(),
 });
 
 export const MessagePayloadSchema = z.object({
@@ -140,11 +144,18 @@ export const SessionErrorSchema = z.object({
 
 // OpenCode compaction event schema
 export const SessionCompactedSchema = z.object({
-	sessionId: z.string(),
-	tokensBefore: z.number().optional(),
-	tokensAfter: z.number().optional(),
-	messagesBefore: z.number().optional(),
-	messagesAfter: z.number().optional(),
+  sessionId: z.string(),
+  tokensBefore: z.number().optional(),
+  tokensAfter: z.number().optional(),
+  messagesBefore: z.number().optional(),
+  messagesAfter: z.number().optional(),
+}).passthrough();
+
+// OpenCode session status schema
+export const SessionStatusSchema = z.object({
+  sessionId: z.string(),
+  status: z.string(),
+  timestamp: z.number().optional(),
 }).passthrough();
 
 // Payload schemas for RPC

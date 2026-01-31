@@ -4,6 +4,7 @@ export {
 	MessageMetadataSchema,
 	SessionEventSchema,
 	SessionPayloadSchema,
+	SessionStatusSchema,
 	ToolPayloadSchema,
 	ToolExecuteBeforeSchema,
 	ToolExecuteAfterSchema,

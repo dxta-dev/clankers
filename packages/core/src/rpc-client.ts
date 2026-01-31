@@ -54,18 +54,22 @@ export interface OkResult {
 }
 
 export interface SessionPayload {
-	id: string;
-	title?: string;
-	projectPath?: string;
-	projectName?: string;
-	model?: string;
-	provider?: string;
-	source?: "opencode" | "claude-code";
-	promptTokens?: number;
-	completionTokens?: number;
-	cost?: number;
-	createdAt?: number;
-	updatedAt?: number;
+  id: string;
+  title?: string;
+  projectPath?: string;
+  projectName?: string;
+  model?: string;
+  provider?: string;
+  source?: "opencode" | "claude-code";
+  status?: string;
+  promptTokens?: number;
+  completionTokens?: number;
+  cost?: number;
+  messageCount?: number;
+  toolCallCount?: number;
+  createdAt?: number;
+  updatedAt?: number;
+  endedAt?: number;
 }
 
 export interface MessagePayload {
