@@ -19,11 +19,15 @@ CREATE TABLE IF NOT EXISTS sessions (
 	model TEXT,
 	provider TEXT,
 	source TEXT,
+	status TEXT,
 	prompt_tokens INTEGER,
 	completion_tokens INTEGER,
 	cost REAL,
+	message_count INTEGER,
+	tool_call_count INTEGER,
 	created_at INTEGER,
-	updated_at INTEGER
+	updated_at INTEGER,
+	ended_at INTEGER
 );
 
 CREATE TABLE IF NOT EXISTS messages (
@@ -99,9 +103,10 @@ CREATE INDEX IF NOT EXISTS idx_compaction_session ON compaction_events(session_i
 
 const upsertSessionSQL = `
 INSERT INTO sessions (
-	id, title, project_path, project_name, model, provider, source,
-	prompt_tokens, completion_tokens, cost, created_at, updated_at
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+	id, title, project_path, project_name, model, provider, source, status,
+	prompt_tokens, completion_tokens, cost, message_count, tool_call_count,
+	created_at, updated_at, ended_at
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 ON CONFLICT(id) DO UPDATE SET
 	title = CASE WHEN excluded.title IS NOT NULL AND excluded.title != ''
 	             THEN excluded.title ELSE sessions.title END,
@@ -111,13 +116,18 @@ ON CONFLICT(id) DO UPDATE SET
 	                THEN excluded.provider ELSE sessions.provider END,
 	source = CASE WHEN excluded.source IS NOT NULL AND excluded.source != ''
 	              THEN excluded.source ELSE sessions.source END,
+	status = CASE WHEN excluded.status IS NOT NULL AND excluded.status != ''
+	              THEN excluded.status ELSE sessions.status END,
 	created_at = COALESCE(sessions.created_at, excluded.created_at),
 	project_path = excluded.project_path,
 	project_name = excluded.project_name,
 	prompt_tokens = excluded.prompt_tokens,
 	completion_tokens = excluded.completion_tokens,
 	cost = excluded.cost,
-	updated_at = excluded.updated_at;
+	message_count = COALESCE(excluded.message_count, sessions.message_count),
+	tool_call_count = COALESCE(excluded.tool_call_count, sessions.tool_call_count),
+	updated_at = excluded.updated_at,
+	ended_at = COALESCE(excluded.ended_at, sessions.ended_at);
 `
 
 const upsertMessageSQL = `
@@ -201,11 +211,15 @@ type Session struct {
 	Model            *string  `json:"model,omitempty"`
 	Provider         *string  `json:"provider,omitempty"`
 	Source           *string  `json:"source,omitempty"`
+	Status           *string  `json:"status,omitempty"`
 	PromptTokens     *int64   `json:"promptTokens,omitempty"`
 	CompletionTokens *int64   `json:"completionTokens,omitempty"`
 	Cost             *float64 `json:"cost,omitempty"`
+	MessageCount     *int64   `json:"messageCount,omitempty"`
+	ToolCallCount    *int64   `json:"toolCallCount,omitempty"`
 	CreatedAt        *int64   `json:"createdAt,omitempty"`
 	UpdatedAt        *int64   `json:"updatedAt,omitempty"`
+	EndedAt          *int64   `json:"endedAt,omitempty"`
 }
 
 type Message struct {
@@ -381,6 +395,14 @@ func (s *Store) UpsertSession(session *Session) error {
 	if session.Cost != nil {
 		cost = *session.Cost
 	}
+	messageCount := int64(0)
+	if session.MessageCount != nil {
+		messageCount = *session.MessageCount
+	}
+	toolCallCount := int64(0)
+	if session.ToolCallCount != nil {
+		toolCallCount = *session.ToolCallCount
+	}
 
 	_, err := s.upsertSession.Exec(
 		session.ID,
@@ -390,11 +412,15 @@ func (s *Store) UpsertSession(session *Session) error {
 		session.Model,
 		session.Provider,
 		session.Source,
+		session.Status,
 		promptTokens,
 		completionTokens,
 		cost,
+		messageCount,
+		toolCallCount,
 		session.CreatedAt,
 		session.UpdatedAt,
+		session.EndedAt,
 	)
 	return err
 }
@@ -478,8 +504,9 @@ func (s *Store) UpsertCompactionEvent(event *CompactionEvent) error {
 }
 
 func (s *Store) GetSessions(limit int) ([]Session, error) {
-	query := `SELECT id, title, project_path, project_name, model, provider, source,
-		prompt_tokens, completion_tokens, cost, created_at, updated_at
+	query := `SELECT id, title, project_path, project_name, model, provider, source, status,
+		prompt_tokens, completion_tokens, cost, message_count, tool_call_count,
+		created_at, updated_at, ended_at
 		FROM sessions ORDER BY created_at DESC`
 	if limit > 0 {
 		query += fmt.Sprintf(" LIMIT %d", limit)
@@ -500,15 +527,20 @@ func (s *Store) GetSessions(limit int) ([]Session, error) {
 		var model sql.NullString
 		var provider sql.NullString
 		var source sql.NullString
+		var status sql.NullString
 		var promptTokens sql.NullInt64
 		var completionTokens sql.NullInt64
 		var cost sql.NullFloat64
+		var messageCount sql.NullInt64
+		var toolCallCount sql.NullInt64
 		var createdAt sql.NullInt64
 		var updatedAt sql.NullInt64
+		var endedAt sql.NullInt64
 
 		err := rows.Scan(
-			&s.ID, &title, &projectPath, &projectName, &model, &provider, &source,
-			&promptTokens, &completionTokens, &cost, &createdAt, &updatedAt,
+			&s.ID, &title, &projectPath, &projectName, &model, &provider, &source, &status,
+			&promptTokens, &completionTokens, &cost, &messageCount, &toolCallCount,
+			&createdAt, &updatedAt, &endedAt,
 		)
 		if err != nil {
 			return nil, err
@@ -532,6 +564,9 @@ func (s *Store) GetSessions(limit int) ([]Session, error) {
 		if source.Valid {
 			s.Source = &source.String
 		}
+		if status.Valid {
+			s.Status = &status.String
+		}
 		if promptTokens.Valid {
 			s.PromptTokens = &promptTokens.Int64
 		}
@@ -541,11 +576,20 @@ func (s *Store) GetSessions(limit int) ([]Session, error) {
 		if cost.Valid {
 			s.Cost = &cost.Float64
 		}
+		if messageCount.Valid {
+			s.MessageCount = &messageCount.Int64
+		}
+		if toolCallCount.Valid {
+			s.ToolCallCount = &toolCallCount.Int64
+		}
 		if createdAt.Valid {
 			s.CreatedAt = &createdAt.Int64
 		}
 		if updatedAt.Valid {
 			s.UpdatedAt = &updatedAt.Int64
+		}
+		if endedAt.Valid {
+			s.EndedAt = &endedAt.Int64
 		}
 
 		sessions = append(sessions, s)
@@ -562,18 +606,24 @@ func (s *Store) GetSessionByID(id string) (*Session, []Message, error) {
 	var model sql.NullString
 	var provider sql.NullString
 	var source sql.NullString
+	var status sql.NullString
 	var promptTokens sql.NullInt64
 	var completionTokens sql.NullInt64
 	var cost sql.NullFloat64
+	var messageCount sql.NullInt64
+	var toolCallCount sql.NullInt64
 	var createdAt sql.NullInt64
 	var updatedAt sql.NullInt64
+	var endedAt sql.NullInt64
 
 	err := s.db.QueryRow(`
-		SELECT id, title, project_path, project_name, model, provider, source,
-			prompt_tokens, completion_tokens, cost, created_at, updated_at
+		SELECT id, title, project_path, project_name, model, provider, source, status,
+			prompt_tokens, completion_tokens, cost, message_count, tool_call_count,
+			created_at, updated_at, ended_at
 		FROM sessions WHERE id = ?`, id).Scan(
-		&session.ID, &title, &projectPath, &projectName, &model, &provider, &source,
-		&promptTokens, &completionTokens, &cost, &createdAt, &updatedAt,
+		&session.ID, &title, &projectPath, &projectName, &model, &provider, &source, &status,
+		&promptTokens, &completionTokens, &cost, &messageCount, &toolCallCount,
+		&createdAt, &updatedAt, &endedAt,
 	)
 	if err == sql.ErrNoRows {
 		return nil, nil, fmt.Errorf("session not found: %s", id)
@@ -600,6 +650,9 @@ func (s *Store) GetSessionByID(id string) (*Session, []Message, error) {
 	if source.Valid {
 		session.Source = &source.String
 	}
+	if status.Valid {
+		session.Status = &status.String
+	}
 	if promptTokens.Valid {
 		session.PromptTokens = &promptTokens.Int64
 	}
@@ -609,11 +662,20 @@ func (s *Store) GetSessionByID(id string) (*Session, []Message, error) {
 	if cost.Valid {
 		session.Cost = &cost.Float64
 	}
+	if messageCount.Valid {
+		session.MessageCount = &messageCount.Int64
+	}
+	if toolCallCount.Valid {
+		session.ToolCallCount = &toolCallCount.Int64
+	}
 	if createdAt.Valid {
 		session.CreatedAt = &createdAt.Int64
 	}
 	if updatedAt.Valid {
 		session.UpdatedAt = &updatedAt.Int64
+	}
+	if endedAt.Valid {
+		session.EndedAt = &endedAt.Int64
 	}
 
 	messages, err := s.GetMessages(id)

@@ -2,11 +2,17 @@
 
 Complete roadmap for capturing tool usage, file operations, errors, and enhanced metadata across both Claude Code and OpenCode plugins.
 
-**Last Updated:** 2026-01-31 (Phase 2 Complete - OpenCode-Specific Events Implemented)
+**Last Updated:** 2026-01-31 (Planning Phase 3 - Enhanced Metadata)
 
 **Current Status:** 
 - Phase 1 (Tool Tracking) ✅ COMPLETE. Both OpenCode and Claude Code tool tracking implemented.
 - Phase 2 (OpenCode-Specific Events) ✅ COMPLETE. File operations, session errors, and compaction events implemented.
+- Phase 3 (Enhanced Metadata) 📋 PLANNED. OpenCode first, direct schema modification (no migrations yet).
+
+**Decisions Made:**
+1. **Migration Framework**: Deferred to future date ([migration framework plan](./migration-framework.md))
+2. **Priority**: OpenCode enhancements before Claude Code
+3. **Schema Changes**: Direct `CREATE TABLE` modification (database not in production, can be dropped)
 
 ## Overview
 
@@ -18,7 +24,7 @@ This plan addresses the major data gaps identified in the current plugin impleme
 | File operations | ⏳ Pending (via PostToolUse) | ✅ **IMPLEMENTED** `file.edited` | **High** - Track code churn |
 | Error tracking | ✅ **IMPLEMENTED** `PostToolUseFailure` | ✅ **IMPLEMENTED** `session.error` | **Medium** - Debugging/quality metrics |
 | Compaction events | ❌ Not available | ✅ **IMPLEMENTED** `session.compacted` | **Medium** - Context window analytics |
-| Enhanced metadata | ⏳ Partial (SessionEnd fields ready) | ⏳ Partial | **Medium** - Complete session picture |
+| Enhanced metadata | ⏳ Partial (SessionEnd fields ready) | 📋 **PLANNED** `session.status`, `session.diff` | **Medium** - Complete session picture |
 
 ## Phase 1: Tool Usage Tracking (Priority: Critical)
 
@@ -339,50 +345,64 @@ SessionEnd: async (event) => {
 }
 ```
 
-### 3.2 OpenCode Enhancements
+### 3.2 OpenCode Enhancements (PRIORITY)
+
+**Status:** 📋 Ready to implement (OpenCode first per decision)
 
 Capture from existing events:
-- `session.status` - track status changes
-- `session.diff` - track session modifications
+- `session.status` - track status changes (running, paused, completed, etc.)
+- `session.diff` - track session modifications (context changes)
+
+**Schema Changes** (direct CREATE TABLE modification - no migrations):
+
+```sql
+-- Modify sessions table directly in storage.go
+CREATE TABLE sessions (
+  id TEXT PRIMARY KEY,
+  client_name TEXT NOT NULL,
+  client_version TEXT NOT NULL,
+  cwd TEXT,
+  -- ... existing fields ...
+  
+  -- NEW: Enhanced metadata fields
+  status TEXT,              -- from session.status events
+  permission_mode TEXT,     -- if available from events
+  message_count INTEGER,    -- derived or from events
+  tool_call_count INTEGER,  -- derived from tools table
+  ended_at INTEGER,         -- from session.end or last activity
+  
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL
+);
+```
+
+**Implementation Tasks:**
+1. Update `sessions` table schema in `packages/cli/internal/storage/storage.go`
+2. Add `session.status` event handler in `apps/opencode-plugin/src/index.ts`
+3. Add `session.diff` event handler (if valuable)
+4. Update TypeScript `SessionPayload` schema in `packages/core/src/schemas.ts`
+5. Update RPC `upsertSession` to handle new fields
+
+**Field Mapping (OpenCode):**
+| Field | Source Event | Property Path |
+|-------|--------------|---------------|
+| `status` | `session.status` | `status` |
+| `message_count` | Derived | Count from messages table |
+| `tool_call_count` | Derived | Count from tools table |
+| `ended_at` | `session.end` or last activity | timestamp |
 
 ---
 
-## Phase 4: Schema Migrations & Storage (Priority: Medium)
+## Phase 4: Schema Migrations & Storage (📋 DEFERRED)
 
-### Migration Strategy
+### Migration Framework: Planned for Future
 
-The Go daemon owns schema creation. Add migration support:
+The migration framework is **deferred** until production databases exist. See [migration-framework.md](./migration-framework.md) for detailed plan.
 
-```go
-// packages/cli/internal/storage/migrations.go
-
-const migrations = []string{
-  // Migration 1: Add tools table
-  `
-  CREATE TABLE IF NOT EXISTS tools (...);
-  CREATE INDEX IF NOT EXISTS idx_tools_session ON tools(session_id);
-  `,
-  // Migration 2: Add file_operations table
-  `
-  CREATE TABLE IF NOT EXISTS file_operations (...);
-  `,
-  // Migration 3: Add session_errors table
-  `
-  CREATE TABLE IF NOT EXISTS session_errors (...);
-  `,
-  // Migration 4: Add compaction_events table
-  `
-  CREATE TABLE IF NOT EXISTS compaction_events (...);
-  `,
-  // Migration 5: Enhance sessions table
-  `
-  ALTER TABLE sessions ADD COLUMN permission_mode TEXT;
-  ALTER TABLE sessions ADD COLUMN end_reason TEXT;
-  ALTER TABLE sessions ADD COLUMN message_count INTEGER;
-  ALTER TABLE sessions ADD COLUMN tool_call_count INTEGER;
-  `,
-}
-```
+**Current Approach (until framework built):**
+- Modify `CREATE TABLE` statements directly in `storage.go`
+- Drop and recreate database when schema changes
+- No `ALTER TABLE` migrations needed
 
 ### RPC Handler Additions
 
@@ -397,7 +417,7 @@ Each new table needs:
 1. Unit tests for each new storage method
 2. Integration tests for RPC handlers
 3. Plugin-level tests with mocked events
-4. Migration tests on fresh and existing databases
+4. Database tests on fresh schema (no migration tests needed yet)
 
 ---
 
@@ -427,11 +447,28 @@ Each new table needs:
 2. ✅ Implement `session.error` tracking
 3. ✅ Implement `session.compacted` tracking
 
-### Sprint 5: Enhanced Metadata
-1. Add session metadata columns
-2. Update Claude Code SessionEnd handler
-3. Update OpenCode session handlers
-4. Backfill where possible
+### Sprint 5: Enhanced Metadata (📋 READY TO START)
+
+**Approach:** Direct schema modification (no migrations - database can be dropped)
+
+**Phase 5A: OpenCode First (PRIORITY)**
+1. Modify `sessions` table CREATE statement in `storage.go`
+   - Add `status TEXT`
+   - Add `permission_mode TEXT` 
+   - Add `message_count INTEGER`
+   - Add `tool_call_count INTEGER`
+   - Add `ended_at INTEGER`
+2. Update `SessionPayload` schema in `packages/core/src/schemas.ts`
+3. Add `session.status` event handler in OpenCode plugin
+4. Update `upsertSession` RPC handler in Go daemon
+5. Test with fresh database
+
+**Phase 5B: Claude Code (after OpenCode)**
+1. Update SessionEnd handler to capture totals
+2. Capture permission_mode from all hooks
+3. Test with fresh database
+
+**Note:** No backfill needed - fresh database with new schema
 
 ---
 
@@ -504,9 +541,15 @@ ORDER BY compaction_count DESC;
 - [x] Compaction events show context window pressure - `session.compacted` events implemented
 - [x] Zero performance degradation in plugins
 
-### Phase 3-5 (Pending)
-- [ ] Enhanced session metadata (permission_mode, end_reason, message/tool counts)
-- [ ] Migrations work on existing databases
+### Phase 3: Enhanced Session Metadata (📋 Ready to Implement)
+- [ ] OpenCode: Add session.status tracking
+- [ ] OpenCode: Add session metadata fields (message_count, tool_call_count)
+- [ ] Claude Code: Capture SessionEnd totals
+- [ ] Modify sessions table schema directly (no migrations)
+
+### Phase 4: Migration Framework (📋 Planned)
+- [ ] Migration framework implementation ([see plan](./migration-framework.md))
+- [ ] Migrations work on existing databases (future requirement)
 
 ---
 
@@ -527,14 +570,14 @@ flowchart TB
         P2_3[✅ session.compacted tracking]
     end
 
-    subgraph Phase3[Phase 3: Enhanced Metadata]
-        P3_1[⏳ permission_mode tracking]
-        P3_2[⏳ end_reason tracking]
-        P3_3[⏳ message/tool counts]
+    subgraph Phase3[Phase 3: Enhanced Metadata 📋 READY]
+        P3_1[📋 OpenCode: session.status]
+        P3_2[📋 OpenCode: metadata fields]
+        P3_3[⏳ Claude Code: SessionEnd]
     end
 
-    subgraph Phase4[Phase 4: Migrations & Polish]
-        P4_1[⏳ Migration framework]
+    subgraph Phase4[Phase 4: Migrations & Polish 📋 PLANNED]
+        P4_1[📋 Migration framework - deferred]
         P4_2[⏳ Analytics queries]
         P4_3[⏳ Performance optimization]
     end
