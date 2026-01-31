@@ -96,6 +96,32 @@ export interface ToolPayload {
 	createdAt: number;
 }
 
+export interface FileOperationPayload {
+	id: string;
+	sessionId: string;
+	filePath: string;
+	operationType: string;
+	createdAt: number;
+}
+
+export interface SessionErrorPayload {
+	id: string;
+	sessionId: string;
+	errorType?: string;
+	errorMessage?: string;
+	createdAt: number;
+}
+
+export interface CompactionEventPayload {
+	id: string;
+	sessionId: string;
+	tokensBefore?: number;
+	tokensAfter?: number;
+	messagesBefore?: number;
+	messagesAfter?: number;
+	createdAt: number;
+}
+
 function getSocketPath(): string {
 	if (process.env.CLANKERS_SOCKET_PATH) {
 		return process.env.CLANKERS_SOCKET_PATH;
@@ -259,6 +285,27 @@ export function createRpcClient(options: RpcClientOptions) {
 			return rpcCall<OkResult>("upsertTool", {
 				...envelope,
 				tool,
+			});
+		},
+
+		async upsertFileOperation(fileOperation: FileOperationPayload): Promise<OkResult> {
+			return rpcCall<OkResult>("upsertFileOperation", {
+				...envelope,
+				fileOperation,
+			});
+		},
+
+		async upsertSessionError(sessionError: SessionErrorPayload): Promise<OkResult> {
+			return rpcCall<OkResult>("upsertSessionError", {
+				...envelope,
+				sessionError,
+			});
+		},
+
+		async upsertCompactionEvent(compactionEvent: CompactionEventPayload): Promise<OkResult> {
+			return rpcCall<OkResult>("upsertCompactionEvent", {
+				...envelope,
+				compactionEvent,
 			});
 		},
 

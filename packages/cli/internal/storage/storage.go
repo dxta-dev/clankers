@@ -59,6 +59,42 @@ CREATE TABLE IF NOT EXISTS tools (
 CREATE INDEX IF NOT EXISTS idx_tools_session ON tools(session_id);
 CREATE INDEX IF NOT EXISTS idx_tools_name ON tools(tool_name);
 CREATE INDEX IF NOT EXISTS idx_tools_file ON tools(file_path);
+
+CREATE TABLE IF NOT EXISTS file_operations (
+	id TEXT PRIMARY KEY,
+	session_id TEXT NOT NULL,
+	file_path TEXT NOT NULL,
+	operation_type TEXT NOT NULL,
+	created_at INTEGER NOT NULL,
+	FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_file_ops_session ON file_operations(session_id);
+CREATE INDEX IF NOT EXISTS idx_file_ops_path ON file_operations(file_path);
+
+CREATE TABLE IF NOT EXISTS session_errors (
+	id TEXT PRIMARY KEY,
+	session_id TEXT NOT NULL,
+	error_type TEXT,
+	error_message TEXT,
+	created_at INTEGER NOT NULL,
+	FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_session_errors_session ON session_errors(session_id);
+
+CREATE TABLE IF NOT EXISTS compaction_events (
+	id TEXT PRIMARY KEY,
+	session_id TEXT NOT NULL,
+	tokens_before INTEGER,
+	tokens_after INTEGER,
+	messages_before INTEGER,
+	messages_after INTEGER,
+	created_at INTEGER NOT NULL,
+	FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_compaction_session ON compaction_events(session_id);
 `
 
 const upsertSessionSQL = `
@@ -118,11 +154,43 @@ ON CONFLICT(id) DO UPDATE SET
 	message_id = COALESCE(excluded.message_id, tools.message_id);
 `
 
+const upsertFileOperationSQL = `
+INSERT INTO file_operations (
+	id, session_id, file_path, operation_type, created_at
+) VALUES (?, ?, ?, ?, ?)
+ON CONFLICT(id) DO UPDATE SET
+	file_path = excluded.file_path,
+	operation_type = excluded.operation_type;
+`
+
+const upsertSessionErrorSQL = `
+INSERT INTO session_errors (
+	id, session_id, error_type, error_message, created_at
+) VALUES (?, ?, ?, ?, ?)
+ON CONFLICT(id) DO UPDATE SET
+	error_type = excluded.error_type,
+	error_message = excluded.error_message;
+`
+
+const upsertCompactionEventSQL = `
+INSERT INTO compaction_events (
+	id, session_id, tokens_before, tokens_after, messages_before, messages_after, created_at
+) VALUES (?, ?, ?, ?, ?, ?, ?)
+ON CONFLICT(id) DO UPDATE SET
+	tokens_before = excluded.tokens_before,
+	tokens_after = excluded.tokens_after,
+	messages_before = excluded.messages_before,
+	messages_after = excluded.messages_after;
+`
+
 type Store struct {
-	db            *sql.DB
-	upsertSession *sql.Stmt
-	upsertMessage *sql.Stmt
-	upsertTool    *sql.Stmt
+	db                 *sql.DB
+	upsertSession      *sql.Stmt
+	upsertMessage      *sql.Stmt
+	upsertTool         *sql.Stmt
+	upsertFileOp       *sql.Stmt
+	upsertSessionError *sql.Stmt
+	upsertCompaction   *sql.Stmt
 }
 
 type Session struct {
@@ -166,6 +234,32 @@ type Tool struct {
 	ErrorMessage *string `json:"errorMessage,omitempty"`
 	DurationMs   *int64  `json:"durationMs,omitempty"`
 	CreatedAt    int64   `json:"createdAt"`
+}
+
+type FileOperation struct {
+	ID            string `json:"id"`
+	SessionID     string `json:"sessionId"`
+	FilePath      string `json:"filePath"`
+	OperationType string `json:"operationType"`
+	CreatedAt     int64  `json:"createdAt"`
+}
+
+type SessionError struct {
+	ID           string  `json:"id"`
+	SessionID    string  `json:"sessionId"`
+	ErrorType    *string `json:"errorType,omitempty"`
+	ErrorMessage *string `json:"errorMessage,omitempty"`
+	CreatedAt    int64   `json:"createdAt"`
+}
+
+type CompactionEvent struct {
+	ID             string `json:"id"`
+	SessionID      string `json:"sessionId"`
+	TokensBefore   *int64 `json:"tokensBefore,omitempty"`
+	TokensAfter    *int64 `json:"tokensAfter,omitempty"`
+	MessagesBefore *int64 `json:"messagesBefore,omitempty"`
+	MessagesAfter  *int64 `json:"messagesAfter,omitempty"`
+	CreatedAt      int64  `json:"createdAt"`
 }
 
 type QueryResult map[string]interface{}
@@ -219,11 +313,44 @@ func Open(dbPath string) (*Store, error) {
 		return nil, err
 	}
 
+	upsertFileOp, err := db.Prepare(upsertFileOperationSQL)
+	if err != nil {
+		upsertSession.Close()
+		upsertMessage.Close()
+		upsertTool.Close()
+		db.Close()
+		return nil, err
+	}
+
+	upsertSessionError, err := db.Prepare(upsertSessionErrorSQL)
+	if err != nil {
+		upsertSession.Close()
+		upsertMessage.Close()
+		upsertTool.Close()
+		upsertFileOp.Close()
+		db.Close()
+		return nil, err
+	}
+
+	upsertCompaction, err := db.Prepare(upsertCompactionEventSQL)
+	if err != nil {
+		upsertSession.Close()
+		upsertMessage.Close()
+		upsertTool.Close()
+		upsertFileOp.Close()
+		upsertSessionError.Close()
+		db.Close()
+		return nil, err
+	}
+
 	return &Store{
-		db:            db,
-		upsertSession: upsertSession,
-		upsertMessage: upsertMessage,
-		upsertTool:    upsertTool,
+		db:                 db,
+		upsertSession:      upsertSession,
+		upsertMessage:      upsertMessage,
+		upsertTool:         upsertTool,
+		upsertFileOp:       upsertFileOp,
+		upsertSessionError: upsertSessionError,
+		upsertCompaction:   upsertCompaction,
 	}, nil
 }
 
@@ -231,6 +358,9 @@ func (s *Store) Close() error {
 	s.upsertSession.Close()
 	s.upsertMessage.Close()
 	s.upsertTool.Close()
+	s.upsertFileOp.Close()
+	s.upsertSessionError.Close()
+	s.upsertCompaction.Close()
 	return s.db.Close()
 }
 
@@ -308,6 +438,41 @@ func (s *Store) UpsertTool(tool *Tool) error {
 		tool.ErrorMessage,
 		tool.DurationMs,
 		tool.CreatedAt,
+	)
+	return err
+}
+
+func (s *Store) UpsertFileOperation(op *FileOperation) error {
+	_, err := s.upsertFileOp.Exec(
+		op.ID,
+		op.SessionID,
+		op.FilePath,
+		op.OperationType,
+		op.CreatedAt,
+	)
+	return err
+}
+
+func (s *Store) UpsertSessionError(errRecord *SessionError) error {
+	_, err := s.upsertSessionError.Exec(
+		errRecord.ID,
+		errRecord.SessionID,
+		errRecord.ErrorType,
+		errRecord.ErrorMessage,
+		errRecord.CreatedAt,
+	)
+	return err
+}
+
+func (s *Store) UpsertCompactionEvent(event *CompactionEvent) error {
+	_, err := s.upsertCompaction.Exec(
+		event.ID,
+		event.SessionID,
+		event.TokensBefore,
+		event.TokensAfter,
+		event.MessagesBefore,
+		event.MessagesAfter,
+		event.CreatedAt,
 	)
 	return err
 }

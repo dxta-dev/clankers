@@ -122,3 +122,54 @@ export const ToolExecuteAfterSchema = z.object({
 	error: z.string().optional(),
 	durationMs: z.number().optional(),
 });
+
+// OpenCode file operation schemas
+export const FileEditedSchema = z.object({
+	sessionId: z.string(),
+	path: z.string(),
+	operation: z.enum(["edited", "created", "deleted"]).optional(),
+}).passthrough();
+
+// OpenCode session error schema
+export const SessionErrorSchema = z.object({
+	sessionId: z.string(),
+	errorType: z.string().optional(),
+	message: z.string(),
+	code: z.string().optional(),
+}).passthrough();
+
+// OpenCode compaction event schema
+export const SessionCompactedSchema = z.object({
+	sessionId: z.string(),
+	tokensBefore: z.number().optional(),
+	tokensAfter: z.number().optional(),
+	messagesBefore: z.number().optional(),
+	messagesAfter: z.number().optional(),
+}).passthrough();
+
+// Payload schemas for RPC
+export const FileOperationPayloadSchema = z.object({
+	id: z.string(),
+	sessionId: z.string(),
+	filePath: z.string(),
+	operationType: z.string(),
+	createdAt: z.number(),
+});
+
+export const SessionErrorPayloadSchema = z.object({
+	id: z.string(),
+	sessionId: z.string(),
+	errorType: z.string().optional(),
+	errorMessage: z.string().optional(),
+	createdAt: z.number(),
+});
+
+export const CompactionEventPayloadSchema = z.object({
+	id: z.string(),
+	sessionId: z.string(),
+	tokensBefore: z.number().optional(),
+	tokensAfter: z.number().optional(),
+	messagesBefore: z.number().optional(),
+	messagesAfter: z.number().optional(),
+	createdAt: z.number(),
+});

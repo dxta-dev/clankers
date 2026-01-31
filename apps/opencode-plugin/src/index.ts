@@ -5,6 +5,9 @@ import {
 	SessionEventSchema,
 	ToolExecuteBeforeSchema,
 	ToolExecuteAfterSchema,
+	FileEditedSchema,
+	SessionErrorSchema,
+	SessionCompactedSchema,
 	createLogger,
 	createRpcClient,
 	inferRole,
@@ -240,14 +243,105 @@ async function handleEvent(
 			});
 		}
 	}
+
+	// File operations tracking (file.edited, file.created, file.deleted)
+	if (event.type === "file.edited") {
+		const parsed = FileEditedSchema.safeParse(props);
+		if (!parsed.success) {
+			logger.debug("File edited validation failed", {
+				error: parsed.error.message,
+			});
+			return;
+		}
+
+		const data = parsed.data;
+		const operationType = data.operation || "edited";
+
+		await rpc.upsertFileOperation({
+			id: generateId(),
+			sessionId: data.sessionId,
+			filePath: data.path,
+			operationType,
+			createdAt: Date.now(),
+		});
+
+		logger.debug(`File ${operationType}: ${data.path}`, {
+			sessionId: data.sessionId,
+			path: data.path,
+			operation: operationType,
+		});
+	}
+
+	// Session error tracking
+	if (event.type === "session.error") {
+		const parsed = SessionErrorSchema.safeParse(props);
+		if (!parsed.success) {
+			logger.debug("Session error validation failed", {
+				error: parsed.error.message,
+			});
+			return;
+		}
+
+		const data = parsed.data;
+
+		await rpc.upsertSessionError({
+			id: generateId(),
+			sessionId: data.sessionId,
+			errorType: data.errorType,
+			errorMessage: data.message,
+			createdAt: Date.now(),
+		});
+
+		logger.debug(`Session error recorded`, {
+			sessionId: data.sessionId,
+			errorType: data.errorType,
+			message: data.message,
+		});
+	}
+
+	// Compaction event tracking
+	if (event.type === "session.compacted") {
+		const parsed = SessionCompactedSchema.safeParse(props);
+		if (!parsed.success) {
+			logger.debug("Session compacted validation failed", {
+				error: parsed.error.message,
+			});
+			return;
+		}
+
+		const data = parsed.data;
+
+		await rpc.upsertCompactionEvent({
+			id: generateId(),
+			sessionId: data.sessionId,
+			tokensBefore: data.tokensBefore,
+			tokensAfter: data.tokensAfter,
+			messagesBefore: data.messagesBefore,
+			messagesAfter: data.messagesAfter,
+			createdAt: Date.now(),
+		});
+
+		logger.debug(`Session compacted`, {
+			sessionId: data.sessionId,
+			tokensBefore: data.tokensBefore,
+			tokensAfter: data.tokensAfter,
+			messagesBefore: data.messagesBefore,
+			messagesAfter: data.messagesAfter,
+		});
+	}
 }
 
-// Tool ID counter for generating unique IDs per session
-let toolCounter = 0;
+// ID counter for generating unique IDs
+let idCounter = 0;
+
+function generateId(): string {
+	idCounter++;
+	return `${Date.now()}-${idCounter}-${Math.random().toString(36).substring(2, 11)}`;
+}
 
 function generateToolId(sessionId: string, toolName: string): string {
-	toolCounter++;
-	return `${sessionId}-${toolName}-${Date.now()}-${toolCounter}`;
+	idCounter++;
+	return `${sessionId}-${toolName}-${Date.now()}-${idCounter}`;
 }
 
 export const ClankersPlugin: Plugin = async ({ client }) => {

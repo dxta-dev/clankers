@@ -56,6 +56,21 @@ type UpsertToolParams struct {
 	Tool storage.Tool `json:"tool"`
 }
 
+type UpsertFileOperationParams struct {
+	RequestEnvelope
+	FileOperation storage.FileOperation `json:"fileOperation"`
+}
+
+type UpsertSessionErrorParams struct {
+	RequestEnvelope
+	SessionError storage.SessionError `json:"sessionError"`
+}
+
+type UpsertCompactionEventParams struct {
+	RequestEnvelope
+	CompactionEvent storage.CompactionEvent `json:"compactionEvent"`
+}
+
 type LogWriteParams struct {
 	RequestEnvelope
 	Entry logging.LogEntry `json:"entry"`
@@ -87,6 +102,12 @@ func (h *Handler) Handle(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2
 		result, err = h.upsertMessage(req.Params)
 	case "upsertTool":
 		result, err = h.upsertTool(req.Params)
+	case "upsertFileOperation":
+		result, err = h.upsertFileOperation(req.Params)
+	case "upsertSessionError":
+		result, err = h.upsertSessionError(req.Params)
+	case "upsertCompactionEvent":
+		result, err = h.upsertCompactionEvent(req.Params)
 	case "log.write":
 		result, err = h.logWrite(req.Params)
 	default:
@@ -243,6 +264,126 @@ func (h *Handler) upsertTool(params *json.RawMessage) (*OkResult, error) {
 	}
 
 	if err := h.store.UpsertTool(&p.Tool); err != nil {
+		return nil, err
+	}
+
+	return &OkResult{OK: true}, nil
+}
+
+func (h *Handler) upsertFileOperation(params *json.RawMessage) (*OkResult, error) {
+	if params == nil {
+		return nil, &jsonrpc2.Error{
+			Code:    jsonrpc2.CodeInvalidParams,
+			Message: "missing params",
+		}
+	}
+
+	var p UpsertFileOperationParams
+	if err := json.Unmarshal(*params, &p); err != nil {
+		return nil, &jsonrpc2.Error{
+			Code:    jsonrpc2.CodeInvalidParams,
+			Message: "invalid params: " + err.Error(),
+		}
+	}
+
+	if p.FileOperation.ID == "" {
+		data := json.RawMessage(`{"field": "id"}`)
+		return nil, &jsonrpc2.Error{
+			Code:    4001,
+			Message: "invalid file operation payload",
+			Data:    &data,
+		}
+	}
+	if p.FileOperation.SessionID == "" {
+		data := json.RawMessage(`{"field": "sessionId"}`)
+		return nil, &jsonrpc2.Error{
+			Code:    4001,
+			Message: "invalid file operation payload",
+			Data:    &data,
+		}
+	}
+
+	if err := h.store.UpsertFileOperation(&p.FileOperation); err != nil {
+		return nil, err
+	}
+
+	return &OkResult{OK: true}, nil
+}
+
+func (h *Handler) upsertSessionError(params *json.RawMessage) (*OkResult, error) {
+	if params == nil {
+		return nil, &jsonrpc2.Error{
+			Code:    jsonrpc2.CodeInvalidParams,
+			Message: "missing params",
+		}
+	}
+
+	var p UpsertSessionErrorParams
+	if err := json.Unmarshal(*params, &p); err != nil {
+		return nil, &jsonrpc2.Error{
+			Code:    jsonrpc2.CodeInvalidParams,
+			Message: "invalid params: " + err.Error(),
+		}
+	}
+
+	if p.SessionError.ID == "" {
+		data := json.RawMessage(`{"field": "id"}`)
+		return nil, &jsonrpc2.Error{
+			Code:    4001,
+			Message: "invalid session error payload",
+			Data:    &data,
+		}
+	}
+	if p.SessionError.SessionID == "" {
+		data := json.RawMessage(`{"field": "sessionId"}`)
+		return nil, &jsonrpc2.Error{
+			Code:    4001,
+			Message: "invalid session error payload",
+			Data:    &data,
+		}
+	}
+
+	if err := h.store.UpsertSessionError(&p.SessionError); err != nil {
+		return nil, err
+	}
+
+	return &OkResult{OK: true}, nil
+}
+
+func (h *Handler) upsertCompactionEvent(params *json.RawMessage) (*OkResult, error) {
+	if params == nil {
+		return nil, &jsonrpc2.Error{
+			Code:    jsonrpc2.CodeInvalidParams,
+			Message: "missing params",
+		}
+	}
+
+	var p UpsertCompactionEventParams
+	if err := json.Unmarshal(*params, &p); err != nil {
+		return nil, &jsonrpc2.Error{
+			Code:    jsonrpc2.CodeInvalidParams,
+			Message: "invalid params: " + err.Error(),
+		}
+	}
+
+	if p.CompactionEvent.ID == "" {
+		data := json.RawMessage(`{"field": "id"}`)
+		return nil, &jsonrpc2.Error{
+			Code:    4001,
+			Message: "invalid compaction event payload",
+			Data:    &data,
+		}
+	}
+	if p.CompactionEvent.SessionID == "" {
+		data := json.RawMessage(`{"field": "sessionId"}`)
+		return nil, &jsonrpc2.Error{
+			Code:    4001,
+			Message: "invalid compaction event payload",
+			Data:    &data,
+		}
+	}
+
+	if err := h.store.UpsertCompactionEvent(&p.CompactionEvent); err != nil {
 		return nil, err
 	}
 

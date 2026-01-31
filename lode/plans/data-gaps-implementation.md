@@ -2,9 +2,11 @@
 
 Complete roadmap for capturing tool usage, file operations, errors, and enhanced metadata across both Claude Code and OpenCode plugins.
 
-**Last Updated:** 2026-01-31 (Phase 1 Complete - Claude Code Tool Tracking Implemented)
+**Last Updated:** 2026-01-31 (Phase 2 Complete - OpenCode-Specific Events Implemented)
 
-**Current Status:** Phase 1 (Tool Tracking) ✅ COMPLETE. Both OpenCode and Claude Code tool tracking implemented.
+**Current Status:** 
+- Phase 1 (Tool Tracking) ✅ COMPLETE. Both OpenCode and Claude Code tool tracking implemented.
+- Phase 2 (OpenCode-Specific Events) ✅ COMPLETE. File operations, session errors, and compaction events implemented.
 
 ## Overview
 
@@ -13,9 +15,9 @@ This plan addresses the major data gaps identified in the current plugin impleme
 | Gap | Claude Code | OpenCode | Value |
 |-----|-------------|----------|-------|
 | Tool usage tracking | ✅ **IMPLEMENTED** `PreToolUse`/`PostToolUse`/`PostToolUseFailure` | ✅ **IMPLEMENTED** `tool.execute.*` | **Critical** - Understand what AI actually does |
-| File operations | ⏳ Pending (via PostToolUse) | ⏳ Pending `file.edited` | **High** - Track code churn |
-| Error tracking | ✅ **IMPLEMENTED** `PostToolUseFailure` | ⏳ Pending `session.error` | **Medium** - Debugging/quality metrics |
-| Compaction events | ❌ Not available | ⏳ Pending `session.compacted` | **Medium** - Context window analytics |
+| File operations | ⏳ Pending (via PostToolUse) | ✅ **IMPLEMENTED** `file.edited` | **High** - Track code churn |
+| Error tracking | ✅ **IMPLEMENTED** `PostToolUseFailure` | ✅ **IMPLEMENTED** `session.error` | **Medium** - Debugging/quality metrics |
+| Compaction events | ❌ Not available | ✅ **IMPLEMENTED** `session.compacted` | **Medium** - Context window analytics |
 | Enhanced metadata | ⏳ Partial (SessionEnd fields ready) | ⏳ Partial | **Medium** - Complete session picture |
 
 ## Phase 1: Tool Usage Tracking (Priority: Critical)
@@ -420,10 +422,10 @@ Each new table needs:
 3. ✅ Add Zod schemas for tool events (ToolExecuteBeforeSchema, ToolExecuteAfterSchema)
 4. ⏳ Test with actual OpenCode tool usage (requires manual testing)
 
-### Sprint 4: OpenCode-Specific Features
-1. Implement `file.edited` tracking
-2. Implement `session.error` tracking
-3. Implement `session.compacted` tracking
+### Sprint 4: OpenCode-Specific Features ✅ COMPLETE
+1. ✅ Implement `file.edited` tracking
+2. ✅ Implement `session.error` tracking
+3. ✅ Implement `session.compacted` tracking
 
 ### Sprint 5: Enhanced Metadata
 1. Add session metadata columns
@@ -496,11 +498,14 @@ ORDER BY compaction_count DESC;
 - [x] All Bash commands captured with full text and exit status
 - [x] Tool error rate measurable by tool type
 
-### Phase 2-5 (Pending)
-- [ ] File edit heatmap available (most edited files) - needs `file.edited` events
-- [ ] Session error rate trackable over time - needs `session.error` events
-- [ ] Compaction events show context window pressure - needs `session.compacted` events
-- [ ] Zero performance degradation in plugins
+### Phase 2 (OpenCode-Specific) - ✅ COMPLETE
+- [x] File edit heatmap available (most edited files) - `file.edited` events implemented
+- [x] Session error rate trackable over time - `session.error` events implemented
+- [x] Compaction events show context window pressure - `session.compacted` events implemented
+- [x] Zero performance degradation in plugins
+
+### Phase 3-5 (Pending)
+- [ ] Enhanced session metadata (permission_mode, end_reason, message/tool counts)
 - [ ] Migrations work on existing databases
 
 ---
@@ -516,10 +521,10 @@ flowchart TB
         P1_3[✅ OpenCode tool.execute.* events]
     end
 
-    subgraph Phase2[Phase 2: OpenCode Specific]
-        P2_1[⏳ file.edited tracking]
-        P2_2[⏳ session.error tracking]
-        P2_3[⏳ session.compacted tracking]
+    subgraph Phase2[Phase 2: OpenCode Specific ✅ COMPLETE]
+        P2_1[✅ file.edited tracking]
+        P2_2[✅ session.error tracking]
+        P2_3[✅ session.compacted tracking]
     end
 
     subgraph Phase3[Phase 3: Enhanced Metadata]
@@ -539,4 +544,7 @@ flowchart TB
     style P1_1 fill:#90EE90
     style P1_2 fill:#90EE90
     style P1_3 fill:#90EE90
+    style P2_1 fill:#90EE90
+    style P2_2 fill:#90EE90
+    style P2_3 fill:#90EE90
 ```
