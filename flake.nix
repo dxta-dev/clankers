@@ -671,6 +671,7 @@
                 "environment": {
                   "CLANKERS_DATA_PATH": "./.clankers-dev",
                   "CLANKERS_SOCKET_PATH": "./.clankers-dev/dxta-clankers.sock",
+                  "CLANKERS_DB_PATH": "./.clankers-dev/clankers.db",
                   "CLANKERS_LOG_PATH": "./.clankers-dev"
                 }
               }
