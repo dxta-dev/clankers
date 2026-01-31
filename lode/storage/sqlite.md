@@ -40,6 +40,25 @@ CREATE TABLE messages (
   completed_at INTEGER,
   FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
 );
+
+CREATE TABLE tools (
+  id TEXT PRIMARY KEY,
+  session_id TEXT NOT NULL,
+  message_id TEXT,  -- optional link to triggering assistant message
+  tool_name TEXT NOT NULL,  -- Bash, Edit, Write, Read, WebFetch, WebSearch, etc.
+  tool_input TEXT,  -- JSON string of tool arguments
+  tool_output TEXT,  -- JSON string of tool response (may be truncated)
+  file_path TEXT,  -- extracted for file operations (Read/Write/Edit)
+  success BOOLEAN,  -- did the tool succeed?
+  error_message TEXT,  -- error details if failed
+  duration_ms INTEGER,  -- execution time in milliseconds
+  created_at INTEGER NOT NULL,
+  FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_tools_session ON tools(session_id);
+CREATE INDEX idx_tools_name ON tools(tool_name);
+CREATE INDEX idx_tools_file ON tools(file_path);
 ```
 
 Upsert behavior

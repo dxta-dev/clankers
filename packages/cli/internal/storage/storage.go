@@ -40,6 +40,25 @@ CREATE TABLE IF NOT EXISTS messages (
 	completed_at INTEGER,
 	FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
 );
+
+CREATE TABLE IF NOT EXISTS tools (
+	id TEXT PRIMARY KEY,
+	session_id TEXT NOT NULL,
+	message_id TEXT,
+	tool_name TEXT NOT NULL,
+	tool_input TEXT,
+	tool_output TEXT,
+	file_path TEXT,
+	success BOOLEAN,
+	error_message TEXT,
+	duration_ms INTEGER,
+	created_at INTEGER NOT NULL,
+	FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_tools_session ON tools(session_id);
+CREATE INDEX IF NOT EXISTS idx_tools_name ON tools(tool_name);
+CREATE INDEX IF NOT EXISTS idx_tools_file ON tools(file_path);
 `
 
 const upsertSessionSQL = `
@@ -86,10 +105,24 @@ ON CONFLICT(id) DO UPDATE SET
 	completed_at = excluded.completed_at;
 `
 
+const upsertToolSQL = `
+INSERT INTO tools (
+	id, session_id, message_id, tool_name, tool_input, tool_output,
+	file_path, success, error_message, duration_ms, created_at
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+ON CONFLICT(id) DO UPDATE SET
+	tool_output = excluded.tool_output,
+	success = excluded.success,
+	error_message = excluded.error_message,
+	duration_ms = excluded.duration_ms,
+	message_id = COALESCE(excluded.message_id, tools.message_id);
+`
+
 type Store struct {
 	db            *sql.DB
 	upsertSession *sql.Stmt
 	upsertMessage *sql.Stmt
+	upsertTool    *sql.Stmt
 }
 
 type Session struct {
@@ -119,6 +152,20 @@ type Message struct {
 	DurationMs       *int64  `json:"durationMs,omitempty"`
 	CreatedAt        *int64  `json:"createdAt,omitempty"`
 	CompletedAt      *int64  `json:"completedAt,omitempty"`
+}
+
+type Tool struct {
+	ID           string  `json:"id"`
+	SessionID    string  `json:"sessionId"`
+	MessageID    *string `json:"messageId,omitempty"`
+	ToolName     string  `json:"toolName"`
+	ToolInput    *string `json:"toolInput,omitempty"`
+	ToolOutput   *string `json:"toolOutput,omitempty"`
+	FilePath     *string `json:"filePath,omitempty"`
+	Success      *bool   `json:"success,omitempty"`
+	ErrorMessage *string `json:"errorMessage,omitempty"`
+	DurationMs   *int64  `json:"durationMs,omitempty"`
+	CreatedAt    int64   `json:"createdAt"`
 }
 
 type QueryResult map[string]interface{}
@@ -164,16 +211,26 @@ func Open(dbPath string) (*Store, error) {
 		return nil, err
 	}
 
+	upsertTool, err := db.Prepare(upsertToolSQL)
+	if err != nil {
+		upsertSession.Close()
+		upsertMessage.Close()
+		db.Close()
+		return nil, err
+	}
+
 	return &Store{
 		db:            db,
 		upsertSession: upsertSession,
 		upsertMessage: upsertMessage,
+		upsertTool:    upsertTool,
 	}, nil
 }
 
 func (s *Store) Close() error {
 	s.upsertSession.Close()
 	s.upsertMessage.Close()
+	s.upsertTool.Close()
 	return s.db.Close()
 }
 
@@ -234,6 +291,23 @@ func (s *Store) UpsertMessage(msg *Message) error {
 		msg.DurationMs,
 		msg.CreatedAt,
 		msg.CompletedAt,
+	)
+	return err
+}
+
+func (s *Store) UpsertTool(tool *Tool) error {
+	_, err := s.upsertTool.Exec(
+		tool.ID,
+		tool.SessionID,
+		tool.MessageID,
+		tool.ToolName,
+		tool.ToolInput,
+		tool.ToolOutput,
+		tool.FilePath,
+		tool.Success,
+		tool.ErrorMessage,
+		tool.DurationMs,
+		tool.CreatedAt,
 	)
 	return err
 }

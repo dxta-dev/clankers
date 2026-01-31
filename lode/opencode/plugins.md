@@ -9,6 +9,9 @@ Invariants
 - npm plugins are installed via Bun and cached in `~/.cache/opencode/node_modules/`.
 - Hook names match the documented event list (session, message, tool, etc.).
 - Database creation/migrations are handled by the clankers daemon, not the plugin.
+- Tool events (`tool.execute.before`, `tool.execute.after`) are captured for all tool invocations (Bash, Read, Write, Edit, WebFetch, WebSearch, etc.).
+- Tool outputs are truncated at 10KB to prevent DB bloat.
+- File paths are extracted from tool input for file operations (Read, Write, Edit) and stored in `file_path` column.
 
 Logs
 - OpenCode logs (Linux) live at `~/.local/share/opencode/log/`.

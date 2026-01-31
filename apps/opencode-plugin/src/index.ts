@@ -3,12 +3,18 @@ import {
 	MessageMetadataSchema,
 	MessagePartSchema,
 	SessionEventSchema,
+	ToolExecuteBeforeSchema,
+	ToolExecuteAfterSchema,
 	createLogger,
 	createRpcClient,
 	inferRole,
 	scheduleMessageFinalize,
 	stageMessageMetadata,
 	stageMessagePart,
+	stageToolStart,
+	completeToolExecution,
+	extractFilePath,
+	truncateToolOutput,
 	type RpcClient,
 } from "@dxta-dev/clankers-core";
 
@@ -161,6 +167,87 @@ async function handleEvent(
 			},
 		);
 	}
+
+	// Tool execution tracking
+	if (event.type === "tool.execute.before") {
+		const parsed = ToolExecuteBeforeSchema.safeParse(props);
+		if (!parsed.success) {
+			logger.debug("Tool execute.before validation failed", {
+				error: parsed.error.message,
+			});
+			return;
+		}
+
+		const data = parsed.data;
+		const toolId = generateToolId(data.sessionId, data.tool);
+
+		// Serialize input for storage
+		const toolInput = JSON.stringify(data.input);
+
+		stageToolStart(toolId, {
+			sessionId: data.sessionId,
+			toolName: data.tool,
+			toolInput,
+			createdAt: Date.now(),
+		});
+
+		logger.debug(`Tool started: ${data.tool}`, {
+			toolId,
+			sessionId: data.sessionId,
+			tool: data.tool,
+		});
+	}
+
+	if (event.type === "tool.execute.after") {
+		const parsed = ToolExecuteAfterSchema.safeParse(props);
+		if (!parsed.success) {
+			logger.debug("Tool execute.after validation failed", {
+				error: parsed.error.message,
+			});
+			return;
+		}
+
+		const data = parsed.data;
+		const toolId = generateToolId(data.sessionId, data.tool);
+
+		// Extract file path for file operations
+		const toolInput = JSON.stringify(data.input);
+		const filePath = extractFilePath(data.tool, toolInput);
+
+		// Truncate output if needed
+		const toolOutput = data.output
+			? truncateToolOutput(JSON.stringify(data.output))
+			: undefined;
+
+		const tool = completeToolExecution(toolId, {
+			toolOutput,
+			success: data.success,
+			errorMessage: data.error,
+			durationMs: data.durationMs,
+		});
+
+		if (tool) {
+			// Add file path if extracted
+			if (filePath) {
+				tool.filePath = filePath;
+			}
+
+			await rpc.upsertTool(tool);
+			logger.debug(`Tool completed: ${data.tool}`, {
+				toolId,
+				success: data.success,
+				durationMs: data.durationMs,
+			});
+		}
+	}
+}
+
+// Tool ID counter for generating unique IDs per session
+let toolCounter = 0;
+
+function generateToolId(sessionId: string, toolName: string): string {
+	toolCounter++;
+	return `${sessionId}-${toolName}-${Date.now()}-${toolCounter}`;
 }
 
 export const ClankersPlugin: Plugin = async ({ client }) => {

@@ -52,6 +52,8 @@ Messages
 - **Claude stop hook recursion**: `stop_hook_active` events are ignored, so assistant messages can be skipped if the hook re-enters.
 - ~~**Generated message IDs can collide**: IDs use `Date.now()`.~~ **RESOLVED**: Claude Code plugin now uses monotonic counter (`${sessionId}-${role}-${count}`).
 - **Claude token counts include cache tokens**: `prompt_tokens` is calculated as `input_tokens + cache_creation_input_tokens + cache_read_input_tokens` to reflect total input token usage.
+- ~~**Tool usage not tracked**: No visibility into what tools AI uses.~~ **RESOLVED**: `tools` table added; OpenCode plugin captures `tool.execute.before/after` events; staging utilities handle before/after lifecycle.
+- **Claude Code tool tracking not implemented**: PreToolUse/PostToolUse hooks need to be added to capture tool usage from Claude Code.
 
 Links: [schemas](schemas.md), [sqlite](../storage/sqlite.md), [opencode event handling](../opencode/event-handling.md), [claude plugin system](../claude/plugin-system.md), [claude data mapping](../claude/data-mapping.md)
 

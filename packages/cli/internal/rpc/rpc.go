@@ -51,6 +51,11 @@ type UpsertMessageParams struct {
 	Message storage.Message `json:"message"`
 }
 
+type UpsertToolParams struct {
+	RequestEnvelope
+	Tool storage.Tool `json:"tool"`
+}
+
 type LogWriteParams struct {
 	RequestEnvelope
 	Entry logging.LogEntry `json:"entry"`
@@ -80,6 +85,8 @@ func (h *Handler) Handle(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2
 		result, err = h.upsertSession(req.Params)
 	case "upsertMessage":
 		result, err = h.upsertMessage(req.Params)
+	case "upsertTool":
+		result, err = h.upsertTool(req.Params)
 	case "log.write":
 		result, err = h.logWrite(req.Params)
 	default:
@@ -188,6 +195,54 @@ func (h *Handler) upsertMessage(params *json.RawMessage) (*OkResult, error) {
 	}
 
 	if err := h.store.UpsertMessage(&p.Message); err != nil {
+		return nil, err
+	}
+
+	return &OkResult{OK: true}, nil
+}
+
+func (h *Handler) upsertTool(params *json.RawMessage) (*OkResult, error) {
+	if params == nil {
+		return nil, &jsonrpc2.Error{
+			Code:    jsonrpc2.CodeInvalidParams,
+			Message: "missing params",
+		}
+	}
+
+	var p UpsertToolParams
+	if err := json.Unmarshal(*params, &p); err != nil {
+		return nil, &jsonrpc2.Error{
+			Code:    jsonrpc2.CodeInvalidParams,
+			Message: "invalid params: " + err.Error(),
+		}
+	}
+
+	if p.Tool.ID == "" {
+		data := json.RawMessage(`{"field": "id"}`)
+		return nil, &jsonrpc2.Error{
+			Code:    4001,
+			Message: "invalid tool payload",
+			Data:    &data,
+		}
+	}
+	if p.Tool.SessionID == "" {
+		data := json.RawMessage(`{"field": "sessionId"}`)
+		return nil, &jsonrpc2.Error{
+			Code:    4001,
+			Message: "invalid tool payload",
+			Data:    &data,
+		}
+	}
+	if p.Tool.ToolName == "" {
+		data := json.RawMessage(`{"field": "toolName"}`)
+		return nil, &jsonrpc2.Error{
+			Code:    4001,
+			Message: "invalid tool payload",
+			Data:    &data,
+		}
+	}
+
+	if err := h.store.UpsertTool(&p.Tool); err != nil {
 		return nil, err
 	}
 

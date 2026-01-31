@@ -4,6 +4,9 @@ export {
 	MessageMetadataSchema,
 	SessionEventSchema,
 	SessionPayloadSchema,
+	ToolPayloadSchema,
+	ToolExecuteBeforeSchema,
+	ToolExecuteAfterSchema,
 } from "./schemas.js";
 export {
 	inferRole,
@@ -12,11 +15,21 @@ export {
 	stageMessagePart,
 } from "./aggregation.js";
 export {
+	stageToolStart,
+	completeToolExecution,
+	linkToolToMessage,
+	isToolSynced,
+	cleanupStaleTools,
+	extractFilePath,
+	truncateToolOutput,
+} from "./tool-aggregation.js";
+export {
 	createRpcClient,
 	type RpcClient,
 	type RpcClientOptions,
 	type SessionPayload,
 	type MessagePayload,
+	type ToolPayload,
 	type HealthResult,
 	type EnsureDbResult,
 	type GetDbPathResult,

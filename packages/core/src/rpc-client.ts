@@ -82,6 +82,20 @@ export interface MessagePayload {
 	completedAt?: number;
 }
 
+export interface ToolPayload {
+	id: string;
+	sessionId: string;
+	messageId?: string;
+	toolName: string;
+	toolInput?: string;
+	toolOutput?: string;
+	filePath?: string;
+	success?: boolean;
+	errorMessage?: string;
+	durationMs?: number;
+	createdAt: number;
+}
+
 function getSocketPath(): string {
 	if (process.env.CLANKERS_SOCKET_PATH) {
 		return process.env.CLANKERS_SOCKET_PATH;
@@ -238,6 +252,13 @@ export function createRpcClient(options: RpcClientOptions) {
 			return rpcCall<OkResult>("upsertMessage", {
 				...envelope,
 				message,
+			});
+		},
+
+		async upsertTool(tool: ToolPayload): Promise<OkResult> {
+			return rpcCall<OkResult>("upsertTool", {
+				...envelope,
+				tool,
 			});
 		},
 

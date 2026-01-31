@@ -91,3 +91,34 @@ export const MessagePayloadSchema = z.object({
 	createdAt: z.number().optional(),
 	completedAt: z.number().optional(),
 });
+
+export const ToolPayloadSchema = z.object({
+	id: z.string(),
+	sessionId: z.string(),
+	messageId: z.string().optional(),
+	toolName: z.string(),
+	toolInput: z.string().optional(),
+	toolOutput: z.string().optional(),
+	filePath: z.string().optional(),
+	success: z.boolean().optional(),
+	errorMessage: z.string().optional(),
+	durationMs: z.number().optional(),
+	createdAt: z.number(),
+});
+
+// OpenCode tool execution schemas
+export const ToolExecuteBeforeSchema = z.object({
+	sessionId: z.string(),
+	tool: z.string(),
+	input: z.record(z.string(), z.unknown()),
+});
+
+export const ToolExecuteAfterSchema = z.object({
+	sessionId: z.string(),
+	tool: z.string(),
+	input: z.record(z.string(), z.unknown()),
+	output: z.record(z.string(), z.unknown()).optional(),
+	success: z.boolean(),
+	error: z.string().optional(),
+	durationMs: z.number().optional(),
+});
