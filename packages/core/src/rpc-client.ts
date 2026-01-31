@@ -67,6 +67,7 @@ export interface SessionPayload {
   cost?: number;
   messageCount?: number;
   toolCallCount?: number;
+  permissionMode?: string;
   createdAt?: number;
   updatedAt?: number;
   endedAt?: number;

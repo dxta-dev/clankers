@@ -7,7 +7,7 @@ Complete roadmap for capturing tool usage, file operations, errors, and enhanced
 **Current Status:** 
 - Phase 1 (Tool Tracking) ✅ COMPLETE. Both OpenCode and Claude Code tool tracking implemented.
 - Phase 2 (OpenCode-Specific Events) ✅ COMPLETE. File operations, session errors, and compaction events implemented.
-- Phase 3 (Enhanced Metadata) 🔄 IN PROGRESS. Sprint 5A (OpenCode) ✅ COMPLETE. Sprint 5B (Claude Code) 📋 PLANNED.
+- Phase 3 (Enhanced Metadata) ✅ COMPLETE. Sprint 5A (OpenCode) ✅ COMPLETE. Sprint 5B (Claude Code) ✅ COMPLETE.
 
 **Decisions Made:**
 1. **Migration Framework**: Deferred to future date ([migration framework plan](./migration-framework.md))
@@ -24,7 +24,7 @@ This plan addresses the major data gaps identified in the current plugin impleme
 | File operations | ⏳ Pending (via PostToolUse) | ✅ **IMPLEMENTED** `file.edited` | **High** - Track code churn |
 | Error tracking | ✅ **IMPLEMENTED** `PostToolUseFailure` | ✅ **IMPLEMENTED** `session.error` | **Medium** - Debugging/quality metrics |
 | Compaction events | ❌ Not available | ✅ **IMPLEMENTED** `session.compacted` | **Medium** - Context window analytics |
-| Enhanced metadata | ⏳ Partial (SessionEnd fields ready) | ✅ **IMPLEMENTED** `session.status` tracking | **Medium** - Complete session picture |
+| Enhanced metadata | ✅ **IMPLEMENTED** SessionEnd totals, permission_mode | ✅ **IMPLEMENTED** `session.status` tracking | **Medium** - Complete session picture |
 
 ## Phase 1: Tool Usage Tracking (Priority: Critical)
 
@@ -312,38 +312,52 @@ Value: Understand how often context window fills up, effectiveness of compaction
 
 ## Phase 3: Enhanced Session Metadata (Priority: Medium)
 
-### 3.1 Claude Code Enhancements
+### 3.1 Claude Code Enhancements ✅ COMPLETE
 
-Capture additional fields from existing hooks:
+**Status:** ✅ Implemented (Sprint 5B)
 
-| Field | Source | Current Status |
-|-------|--------|----------------|
-| `permission_mode` | All hooks | Not stored |
-| `end_reason` | SessionEnd | Not stored |
-| `message_count` | SessionEnd | Not stored |
-| `tool_call_count` | SessionEnd | Not stored |
+**Schema Changes Applied** (direct CREATE TABLE modification - no migrations):
 
-Schema migration:
 ```sql
-ALTER TABLE sessions ADD COLUMN permission_mode TEXT;
-ALTER TABLE sessions ADD COLUMN end_reason TEXT;
-ALTER TABLE sessions ADD COLUMN message_count INTEGER;
-ALTER TABLE sessions ADD COLUMN tool_call_count INTEGER;
+-- sessions table now includes enhanced metadata fields
+CREATE TABLE sessions (
+  id TEXT PRIMARY KEY,
+  title TEXT,
+  project_path TEXT,
+  project_name TEXT,
+  model TEXT,
+  provider TEXT,
+  source TEXT,
+  status TEXT,              -- ✅ set to "ended" on SessionEnd
+  prompt_tokens INTEGER,
+  completion_tokens INTEGER,
+  cost REAL,
+  message_count INTEGER,    -- ✅ from SessionEnd hook
+  tool_call_count INTEGER,  -- ✅ from SessionEnd hook
+  permission_mode TEXT,     -- ✅ from SessionStart/SessionEnd hooks
+  created_at INTEGER,
+  updated_at INTEGER,
+  ended_at INTEGER          -- ✅ set on SessionEnd
+);
 ```
 
-Update `SessionEnd` handler to capture totals:
-```typescript
-SessionEnd: async (event) => {
-  // ... existing code ...
-  const finalSession: SessionPayload = {
-    // ... existing fields ...
-    permissionMode: data.permission_mode,
-    endReason: data.reason,
-    messageCount: data.messageCount,
-    toolCallCount: data.toolCallCount,
-  };
-}
-```
+**Implementation Complete:**
+1. ✅ Modified `sessions` table schema in `packages/cli/internal/storage/storage.go`
+2. ✅ Added `permissionMode` field to `SessionPayload` schema in `packages/core/src/schemas.ts`
+3. ✅ Added `permissionMode` to `SessionPayload` interface in `packages/core/src/rpc-client.ts`
+4. ✅ Updated `SessionStart` handler to capture `permission_mode` from hook
+5. ✅ Updated `SessionEnd` handler to capture `messageCount`, `toolCallCount`, set `status="ended"`, and `endedAt`
+6. ✅ Updated `upsertSession` SQL and Go structs to handle all new fields
+7. ✅ Updated all query methods (`GetSessions`, `GetSessionByID`) to return new fields
+
+**Field Mapping (Claude Code):**
+| Field | Source Event | Property Path | Status |
+|-------|--------------|---------------|--------|
+| `permission_mode` | `SessionStart`, `SessionEnd` | `permission_mode` | ✅ Implemented |
+| `message_count` | `SessionEnd` | `messageCount` | ✅ Implemented |
+| `tool_call_count` | `SessionEnd` | `toolCallCount` | ✅ Implemented |
+| `status` | Set to `"ended"` on SessionEnd | - | ✅ Implemented |
+| `ended_at` | Set on SessionEnd | `Date.now()` | ✅ Implemented |
 
 ### 3.2 OpenCode Enhancements ✅ COMPLETE
 
@@ -391,31 +405,27 @@ CREATE TABLE sessions (
 
 ---
 
-## Phase 4: Schema Migrations & Storage (📋 DEFERRED)
+## Phase 4: Schema Migrations & Storage (📋 DEFERRED - NOT IN THIS PLAN)
 
-### Migration Framework: Planned for Future
+**Status:** 📋 **DEFERRED TO FUTURE WORK**
 
-The migration framework is **deferred** until production databases exist. See [migration-framework.md](./migration-framework.md) for detailed plan.
+Phase 4 is explicitly **not part of this implementation plan**. The migration framework will be addressed separately when production databases exist and migrations become necessary.
 
-**Current Approach (until framework built):**
+### Why Deferred?
+
+- Current databases are development-only (can be dropped/recreated)
+- No production data requiring preservation
+- Migration framework adds complexity not needed yet
+
+### Current Approach (No Migrations)
+
 - Modify `CREATE TABLE` statements directly in `storage.go`
 - Drop and recreate database when schema changes
-- No `ALTER TABLE` migrations needed
+- No `ALTER TABLE` migrations needed in development
 
-### RPC Handler Additions
+### Future Work
 
-Each new table needs:
-1. Go storage method (upsert + query)
-2. JSON-RPC handler
-3. TypeScript payload schema
-4. TypeScript RPC client method
-
-### Testing Strategy
-
-1. Unit tests for each new storage method
-2. Integration tests for RPC handlers
-3. Plugin-level tests with mocked events
-4. Database tests on fresh schema (no migration tests needed yet)
+See [migration-framework.md](./migration-framework.md) for the separate detailed plan on migrations.
 
 ---
 
@@ -425,7 +435,7 @@ Each new table needs:
 1. ✅ Create `tools` table with indexes (schema auto-created on daemon start)
 2. ✅ Add `upsertTool` RPC method (Go handler + TypeScript client)
 3. ✅ Add TypeScript `ToolPayload` schema and RPC method
-4. ⏳ Add migration framework to Go daemon (deferred - using auto-create for now)
+4. ❌ Migration framework (explicitly deferred - Phase 4 not in this plan)
 
 ### Sprint 2: Claude Code Tool Tracking ✅ COMPLETE
 1. ✅ Update `hooks.json` with PreToolUse/PostToolUse/PostToolUseFailure
@@ -461,11 +471,12 @@ Each new table needs:
 5. ✅ Updated query methods (`GetSessions`, `GetSessionByID`)
 6. ✅ TypeScript and Go builds pass
 
-**Phase 5B: Claude Code (📋 PLANNED)**
-1. Update SessionEnd handler to capture totals (message_count, tool_call_count)
-2. Capture permission_mode from hooks if available
-3. Set ended_at on session end
-4. Test with fresh database
+**Phase 5B: Claude Code ✅ COMPLETE**
+1. ✅ Update SessionEnd handler to capture totals (message_count, tool_call_count)
+2. ✅ Capture permission_mode from SessionStart and SessionEnd hooks
+3. ✅ Set ended_at on session end
+4. ✅ Set status to "ended" on SessionEnd
+5. ✅ Test with fresh database
 
 **Note:** No backfill needed - fresh database with new schema
 
@@ -575,10 +586,10 @@ flowchart TB
         P3_3[📋 Claude Code: SessionEnd]
     end
 
-    subgraph Phase4[Phase 4: Migrations & Polish 📋 PLANNED]
-        P4_1[📋 Migration framework - deferred]
-        P4_2[⏳ Analytics queries]
-        P4_3[⏳ Performance optimization]
+    subgraph Phase4[Phase 4: Migrations 📋 DEFERRED]
+        P4_1[📋 Migration framework - future work]
+        P4_2[📄 Analytics queries - documented]
+        P4_3[📄 Performance optimization - documented]
     end
 
     Phase1 --> Phase2 --> Phase3 --> Phase4

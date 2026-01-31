@@ -248,6 +248,7 @@ export function createPlugin(): ClaudeCodeHooks | null {
 				projectName: getProjectName(data.cwd),
 				model: data.model,
 				provider: "anthropic",
+				permissionMode: data.permission_mode,
 				createdAt,
 			});
 
@@ -260,6 +261,7 @@ export function createPlugin(): ClaudeCodeHooks | null {
 					provider: "anthropic",
 					source: "claude-code",
 					title: "Untitled Session",
+					permissionMode: data.permission_mode,
 					createdAt,
 				});
 			} catch (error) {
@@ -562,12 +564,16 @@ export function createPlugin(): ClaudeCodeHooks | null {
 				projectName: getProjectName(data.cwd),
 				provider: "anthropic",
 				source: "claude-code",
+				status: "ended",
 				title: currentState.title,
 				model: currentState.model,
 				createdAt: currentState.createdAt,
 				promptTokens: totalTokenUsage.input ?? currentState.promptTokens,
 				completionTokens: totalTokenUsage.output ?? currentState.completionTokens,
 				cost: resolvedCost,
+				messageCount: data.messageCount,
+				toolCallCount: data.toolCallCount,
+				endedAt: Date.now(),
 				updatedAt: Date.now(),
 			};
 

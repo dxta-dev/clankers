@@ -25,6 +25,7 @@ CREATE TABLE IF NOT EXISTS sessions (
 	cost REAL,
 	message_count INTEGER,
 	tool_call_count INTEGER,
+	permission_mode TEXT,
 	created_at INTEGER,
 	updated_at INTEGER,
 	ended_at INTEGER
@@ -105,8 +106,8 @@ const upsertSessionSQL = `
 INSERT INTO sessions (
 	id, title, project_path, project_name, model, provider, source, status,
 	prompt_tokens, completion_tokens, cost, message_count, tool_call_count,
-	created_at, updated_at, ended_at
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+	permission_mode, created_at, updated_at, ended_at
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 ON CONFLICT(id) DO UPDATE SET
 	title = CASE WHEN excluded.title IS NOT NULL AND excluded.title != ''
 	             THEN excluded.title ELSE sessions.title END,
@@ -118,6 +119,8 @@ ON CONFLICT(id) DO UPDATE SET
 	              THEN excluded.source ELSE sessions.source END,
 	status = CASE WHEN excluded.status IS NOT NULL AND excluded.status != ''
 	              THEN excluded.status ELSE sessions.status END,
+	permission_mode = CASE WHEN excluded.permission_mode IS NOT NULL AND excluded.permission_mode != ''
+	                       THEN excluded.permission_mode ELSE sessions.permission_mode END,
 	created_at = COALESCE(sessions.created_at, excluded.created_at),
 	project_path = excluded.project_path,
 	project_name = excluded.project_name,
@@ -217,6 +220,7 @@ type Session struct {
 	Cost             *float64 `json:"cost,omitempty"`
 	MessageCount     *int64   `json:"messageCount,omitempty"`
 	ToolCallCount    *int64   `json:"toolCallCount,omitempty"`
+	PermissionMode   *string  `json:"permissionMode,omitempty"`
 	CreatedAt        *int64   `json:"createdAt,omitempty"`
 	UpdatedAt        *int64   `json:"updatedAt,omitempty"`
 	EndedAt          *int64   `json:"endedAt,omitempty"`
@@ -418,6 +422,7 @@ func (s *Store) UpsertSession(session *Session) error {
 		cost,
 		messageCount,
 		toolCallCount,
+		session.PermissionMode,
 		session.CreatedAt,
 		session.UpdatedAt,
 		session.EndedAt,
@@ -506,7 +511,7 @@ func (s *Store) UpsertCompactionEvent(event *CompactionEvent) error {
 func (s *Store) GetSessions(limit int) ([]Session, error) {
 	query := `SELECT id, title, project_path, project_name, model, provider, source, status,
 		prompt_tokens, completion_tokens, cost, message_count, tool_call_count,
-		created_at, updated_at, ended_at
+		permission_mode, created_at, updated_at, ended_at
 		FROM sessions ORDER BY created_at DESC`
 	if limit > 0 {
 		query += fmt.Sprintf(" LIMIT %d", limit)
@@ -533,6 +538,7 @@ func (s *Store) GetSessions(limit int) ([]Session, error) {
 		var cost sql.NullFloat64
 		var messageCount sql.NullInt64
 		var toolCallCount sql.NullInt64
+		var permissionMode sql.NullString
 		var createdAt sql.NullInt64
 		var updatedAt sql.NullInt64
 		var endedAt sql.NullInt64
@@ -540,7 +546,7 @@ func (s *Store) GetSessions(limit int) ([]Session, error) {
 		err := rows.Scan(
 			&s.ID, &title, &projectPath, &projectName, &model, &provider, &source, &status,
 			&promptTokens, &completionTokens, &cost, &messageCount, &toolCallCount,
-			&createdAt, &updatedAt, &endedAt,
+			&permissionMode, &createdAt, &updatedAt, &endedAt,
 		)
 		if err != nil {
 			return nil, err
@@ -582,6 +588,9 @@ func (s *Store) GetSessions(limit int) ([]Session, error) {
 		if toolCallCount.Valid {
 			s.ToolCallCount = &toolCallCount.Int64
 		}
+		if permissionMode.Valid {
+			s.PermissionMode = &permissionMode.String
+		}
 		if createdAt.Valid {
 			s.CreatedAt = &createdAt.Int64
 		}
@@ -612,6 +621,7 @@ func (s *Store) GetSessionByID(id string) (*Session, []Message, error) {
 	var cost sql.NullFloat64
 	var messageCount sql.NullInt64
 	var toolCallCount sql.NullInt64
+	var permissionMode sql.NullString
 	var createdAt sql.NullInt64
 	var updatedAt sql.NullInt64
 	var endedAt sql.NullInt64
@@ -619,11 +629,11 @@ func (s *Store) GetSessionByID(id string) (*Session, []Message, error) {
 	err := s.db.QueryRow(`
 		SELECT id, title, project_path, project_name, model, provider, source, status,
 			prompt_tokens, completion_tokens, cost, message_count, tool_call_count,
-			created_at, updated_at, ended_at
+			permission_mode, created_at, updated_at, ended_at
 		FROM sessions WHERE id = ?`, id).Scan(
 		&session.ID, &title, &projectPath, &projectName, &model, &provider, &source, &status,
 		&promptTokens, &completionTokens, &cost, &messageCount, &toolCallCount,
-		&createdAt, &updatedAt, &endedAt,
+		&permissionMode, &createdAt, &updatedAt, &endedAt,
 	)
 	if err == sql.ErrNoRows {
 		return nil, nil, fmt.Errorf("session not found: %s", id)
@@ -667,6 +677,9 @@ func (s *Store) GetSessionByID(id string) (*Session, []Message, error) {
 	}
 	if toolCallCount.Valid {
 		session.ToolCallCount = &toolCallCount.Int64
+	}
+	if permissionMode.Valid {
+		session.PermissionMode = &permissionMode.String
 	}
 	if createdAt.Valid {
 		session.CreatedAt = &createdAt.Int64

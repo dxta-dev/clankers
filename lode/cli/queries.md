@@ -70,6 +70,53 @@ Columns are capped at 50 characters; long values are truncated with `...`.
 
 ## Common Queries
 
+## Analytics Query Catalog (Documented)
+
+These queries are documented for manual use via `clankers query`. No new CLI command exists yet.
+
+### Tool error rate by tool name
+
+```bash
+clankers query "SELECT tool_name,
+       COUNT(*) as total,
+       SUM(CASE WHEN success = 0 THEN 1 ELSE 0 END) as failures,
+       ROUND(100.0 * SUM(CASE WHEN success = 0 THEN 1 ELSE 0 END) / COUNT(*), 2) as error_rate
+FROM tools
+GROUP BY tool_name
+ORDER BY error_rate DESC"
+```
+
+### Most frequently edited files
+
+```bash
+clankers query "SELECT file_path, COUNT(*) as edits
+FROM file_operations
+WHERE operation_type = 'edited'
+GROUP BY file_path
+ORDER BY edits DESC
+LIMIT 20"
+```
+
+### Session tool volume (high activity sessions)
+
+```bash
+clankers query "SELECT s.id, s.title, COUNT(t.id) as tool_count
+FROM sessions s
+JOIN tools t ON s.id = t.session_id
+GROUP BY s.id
+ORDER BY tool_count DESC
+LIMIT 20"
+```
+
+### Compaction frequency by session
+
+```bash
+clankers query "SELECT session_id, COUNT(*) as compaction_count
+FROM compaction_events
+GROUP BY session_id
+ORDER BY compaction_count DESC"
+```
+
 ### List recent sessions
 
 ```bash

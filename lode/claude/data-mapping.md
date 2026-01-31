@@ -14,6 +14,11 @@ Invariants
 
 `SessionEnd` is used for `updated_at`, token totals, and cost; the plugin carries forward title/model/createdAt from in-memory state to avoid overwriting them.
 
+Claude metadata persisted on session end:
+- `permission_mode` captured on `SessionStart` and carried through `SessionEnd`.
+- `message_count` and `tool_call_count` captured from `SessionEnd`.
+- `status` set to `"ended"` and `ended_at` set at `SessionEnd` time.
+
 ## Message mapping
 
 `UserPromptSubmit` writes a user message with text and `created_at`.

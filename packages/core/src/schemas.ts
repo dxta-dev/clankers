@@ -77,6 +77,7 @@ export const SessionPayloadSchema = z.object({
   cost: z.number().optional(),
   messageCount: z.number().optional(),
   toolCallCount: z.number().optional(),
+  permissionMode: z.string().optional(),
   createdAt: z.number().optional(),
   updatedAt: z.number().optional(),
   endedAt: z.number().optional(),
